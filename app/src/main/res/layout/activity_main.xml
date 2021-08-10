@@ -46,6 +46,7 @@
         android:layout_height="wrap_content"
         android:padding="5dp"
         android:text="Nose"
+        android:background="@drawable/text_background"
         android:textColor="@android:color/holo_green_dark"
         android:textSize="17sp"
          />

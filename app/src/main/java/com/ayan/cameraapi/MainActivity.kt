@@ -89,6 +89,11 @@ class MainActivity : AppCompatActivity() {
         ORIENTATIONS.append(Surface.ROTATION_180, 180)
         ORIENTATIONS.append(Surface.ROTATION_270, 270)
     }
+
+    lateinit var leftThumb:TextView
+    lateinit var rightThumb:TextView
+    lateinit var leftHeel:TextView
+    lateinit var rightHeel:TextView
     private lateinit var poseDetector:PoseDetector
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -98,7 +103,11 @@ class MainActivity : AppCompatActivity() {
             .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
             .build()
         eye=findViewById(R.id.eye_text)
+        leftThumb=findViewById(R.id.left_thumb)
+        rightThumb=findViewById(R.id.right_thumb)
         parent_layout=findViewById(R.id.parent_layout)
+        leftHeel=findViewById(R.id.left_heel)
+        rightHeel=findViewById(R.id.right_heel)
         mBackgroundThread= HandlerThread("camera Background")
         mBackgroundThread.start()
         mBackgroundHandler=Handler(mBackgroundThread.looper)
@@ -232,10 +241,23 @@ class MainActivity : AppCompatActivity() {
                             constraintSet.clone(parent_layout)
                             constraintSet.connect(eye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x.toInt())
                             constraintSet.connect(eye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y.toInt())
-                            constraintSet.connect(leftEye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.LEFT_MOUTH).position.x.toInt())
-                            constraintSet.connect(leftEye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.LEFT_MOUTH).position.y.toInt())
-                            constraintSet.connect(rightEye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.RIGHT_EYE).position.x.toInt())
-                            constraintSet.connect(rightEye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.RIGHT_EYE).position.y.toInt())
+                            constraintSet.connect(leftEye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.x.toInt())
+                            constraintSet.connect(leftEye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.y.toInt())
+                            constraintSet.connect(rightEye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.x.toInt())
+                            constraintSet.connect(rightEye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.y.toInt())
+
+                            constraintSet.connect(leftThumb.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.LEFT_THUMB).position.x.toInt())
+                            constraintSet.connect(leftThumb.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.LEFT_THUMB).position.y.toInt())
+
+                            constraintSet.connect(rightThumb.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.RIGHT_THUMB).position.x.toInt())
+                            constraintSet.connect(rightThumb.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.RIGHT_THUMB).position.y.toInt())
+
+
+                            constraintSet.connect(leftHeel.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.LEFT_HEEL).position.x.toInt())
+                            constraintSet.connect(leftHeel.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.LEFT_HEEL).position.y.toInt())
+
+                            constraintSet.connect(rightHeel.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,pose.result.getPoseLandmark(PoseLandmark.RIGHT_HEEL).position.x.toInt())
+                            constraintSet.connect(rightHeel.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,pose.result.getPoseLandmark(PoseLandmark.RIGHT_HEEL).position.y.toInt())
                             constraintSet.applyTo(parent_layout)
 
                         }//else{

@@ -56,8 +56,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="5dp"
-        android:text="Mouth"
-        android:visibility="gone"
+        android:text="Right Shoulder"
+        android:background="@drawable/text_background"
         android:textColor="@android:color/holo_red_dark"
         android:textSize="14sp"
         />
@@ -67,11 +67,54 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="5dp"
-        android:visibility="gone"
-        android:text="Right eye"
+        android:background="@drawable/text_background"
+        android:text="Left Shoulder"
+        android:textColor="@android:color/holo_orange_dark"
+        android:textSize="14sp"
+        />
+    <TextView
+        android:id="@+id/left_thumb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:background="@drawable/text_background"
+        android:text="Right Thumb"
+        android:textColor="@android:color/holo_orange_dark"
+        android:textSize="14sp"
+        />
+    <TextView
+        android:id="@+id/right_thumb"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:background="@drawable/text_background"
+        android:text="Left Thumb"
         android:textColor="@android:color/holo_orange_dark"
         android:textSize="14sp"
         />
 
+
+    <TextView
+        android:id="@+id/left_heel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:background="@drawable/text_background"
+        android:text="Right Heel"
+        android:textColor="@android:color/holo_orange_dark"
+        android:textSize="14sp"
+        />
+
+
+    <TextView
+        android:id="@+id/right_heel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:padding="5dp"
+        android:background="@drawable/text_background"
+        android:text="Left Heel"
+        android:textColor="@android:color/holo_orange_dark"
+        android:textSize="14sp"
+        />
 </androidx.constraintlayout.widget.ConstraintLayout>
 

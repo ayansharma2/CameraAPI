@@ -171,7 +171,7 @@ class MainActivity : AppCompatActivity() {
         Resources.getSystem().displayMetrics.heightPixels
         backEnd=Box(Resources.getSystem().displayMetrics.widthPixels,Resources.getSystem().displayMetrics.heightPixels)
         Log.e("ImageDimensions","${imageDimensions.width.toString()}  ${imageDimensions.height.toString()}")
-        texture!!.setDefaultBufferSize(500,500)
+        texture!!.setDefaultBufferSize(1000,1000)
 //        imageReader= ImageReader.newInstance(imageDimensions.width,imageDimensions.height,
 //        ImageFormat.RGB_565,50)
 //        imageReader.setOnImageAvailableListener({reader->

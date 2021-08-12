@@ -5,7 +5,8 @@ class Box(
     val height: Int,
 
 ) {
-    var boxSize = 50
+    var boxWidth:Int = 0
+
     var score=0
         get() = field
         set(value) {
@@ -14,13 +15,12 @@ class Box(
 
     @JvmName("getBoxSize1")
     fun getBoxSize(): Int {
-        boxSize += 50
-        return boxSize-50
+        boxWidth=(width/2..width).random()
+        return boxWidth
     }
 
     fun getConstraints():Margins{
-        val marginStart= (0..width-boxSize).random()
-        val marginTop=(0..height-boxSize).random()
-        return Margins(marginStart,marginTop)
+        val marginStart= (0..width-boxWidth).random()
+        return Margins(marginStart,height)
     }
 }

@@ -85,7 +85,7 @@ class MainActivity : AppCompatActivity() {
        setContentView(R.layout.activity_main)
         imageView=findViewById(R.id.image_view)
         options=PoseDetectorOptions.Builder()
-            .setDetectorMode(PoseDetectorOptions.STREAM_MODE)
+            .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE)
             .build()
         eye=findViewById(R.id.eye_text)
         leftThumb=findViewById(R.id.left_thumb)
@@ -218,13 +218,13 @@ class MainActivity : AppCompatActivity() {
             while(true){
 
                 val margin=backEnd.getConstraints()
-                val height=backEnd.getBoxSize()
+                val width=backEnd.getBoxSize()
                 runOnUiThread {
-                    background.setStroke(4,Color.YELLOW)
+                    background.setStroke(15,Color.YELLOW)
                     //imageView.setImageBitmap(textureView.bitmap)
                     val lp=box.layoutParams
-                    lp.height=height
-                    lp.width=height
+                    lp.height=imageDimensions.height
+                    lp.width=width
                     box.layoutParams=lp
                     val constraintSet=ConstraintSet()
                     constraintSet.clone(parent_layout)
@@ -233,31 +233,31 @@ class MainActivity : AppCompatActivity() {
                     parent_layout.id,ConstraintSet.START,margin.marginStart)
 
                     constraintSet.connect(box.id,ConstraintSet.TOP,
-                        parent_layout.id,ConstraintSet.TOP,margin.marginTop)
+                        parent_layout.id,ConstraintSet.TOP,0)
                     constraintSet.applyTo(parent_layout)
                 }
                 Thread.sleep(5000)
                 val image=InputImage.fromBitmap(textureView.bitmap,0)
-                val cropped=getRectangleShape(textureView.bitmap,margin,height)
+                val cropped=getRectangleShape(textureView.bitmap,margin,imageDimensions.height)
                 //imageView.setImageBitmap(croped)
                 poseDetector.process(image)
                     .addOnCompleteListener {pose->
                         if(pose.result.allPoseLandmarks.size>0){
                             poseDetector.process(InputImage.fromBitmap(cropped,0))
-                                .addOnCompleteListener {
+                                .addOnCompleteListener {it->
                                     if(it.result.allPoseLandmarks.size==0){
                                         runOnUiThread {
-                                            background.setStroke(4,Color.GREEN)
+                                            background.setStroke(15,Color.GREEN)
                                         }
                                     }else{
                                         runOnUiThread {
-                                            background.setStroke(4,Color.RED)
+                                            background.setStroke(15,Color.RED)
                                         }
                                     }
                                 }
                         }else{
                             runOnUiThread {
-                                background.setStroke(4,Color.RED)
+                                background.setStroke(15,Color.RED)
                             }
                         }//else{
 //                            val constraintSet=ConstraintSet()

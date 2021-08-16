@@ -16,10 +16,6 @@ import android.util.Size
 import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.TextView
-import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
@@ -33,16 +29,18 @@ import android.graphics.*
 import android.graphics.drawable.GradientDrawable
 import android.util.DisplayMetrics
 import android.view.View
+import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import kotlinx.coroutines.*
+import java.util.*
 import kotlin.concurrent.thread
 
 
 class MainActivity : AppCompatActivity() {
 
-    val textureView: TextureView by lazy {
-        findViewById<TextureView>(R.id.texture_view)
+    val textureView: AutoFitTextureView by lazy {
+        findViewById<AutoFitTextureView>(R.id.texture_view)
     }
     companion object{
         const val CAMERA_REQUEST=2
@@ -109,7 +107,8 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-
+    var Viewheight=0
+    var Viewwidth=0
     private fun takePicture() {
         TODO("Not yet implemented")
     }
@@ -119,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-            TODO("Not yet implemented")
+            openCamera()
         }
 
         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
@@ -134,16 +133,15 @@ class MainActivity : AppCompatActivity() {
     lateinit var manager: CameraManager
     @SuppressLint("MissingPermission")
     private fun openCamera() {
-
         manager=getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        cameraId=manager.cameraIdList[1]
+        cameraId=manager.cameraIdList[0]
         val characteristics=manager.getCameraCharacteristics(cameraId)
         val map=characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         imageDimensions=map!!.getOutputSizes(SurfaceTexture::class.java)[0]
         if(ContextCompat.checkSelfPermission(this,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){
             requestPermissions(arrayOf(Manifest.permission.CAMERA),
                 CAMERA_REQUEST)
-            return ;
+            return
         }
         manager.openCamera(cameraId,stateCallback,mBackgroundHandler)
     }
@@ -155,7 +153,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onDisconnected(camera: CameraDevice) {
-            TODO("Not yet implemented")
+            captureRequestBuilder.removeTarget(Surface(textureView.surfaceTexture))
+            //captureCameraSession.stopRepeating()
+            textureView.surfaceTextureListener= textureListener
+
         }
 
         override fun onError(camera: CameraDevice, error: Int) {
@@ -168,10 +169,33 @@ class MainActivity : AppCompatActivity() {
     private fun createCameraPreview() {
         val texture=textureView.surfaceTexture
         val displayMetrics=DisplayMetrics()
-        Resources.getSystem().displayMetrics.heightPixels
-        backEnd=Box(Resources.getSystem().displayMetrics.widthPixels,Resources.getSystem().displayMetrics.heightPixels)
-        Log.e("ImageDimensions","${imageDimensions.width.toString()}  ${imageDimensions.height.toString()}")
-        texture!!.setDefaultBufferSize(1000,1000)
+
+
+
+        texture!!.setDefaultBufferSize(imageDimensions.height,imageDimensions.height)
+        runOnUiThread {
+            textureView.setAspectRatio(9,16)
+            val constraintSet=ConstraintSet()
+            constraintSet.clone(parent_layout)
+            val margin=Resources.getSystem().displayMetrics.heightPixels-textureView.height
+            constraintSet.connect(box.id,ConstraintSet.TOP,
+                parent_layout.id,ConstraintSet.TOP,margin/2)
+
+            constraintSet.connect(box.id,ConstraintSet.BOTTOM,
+                parent_layout.id,ConstraintSet.BOTTOM,margin/2)
+            constraintSet.applyTo(parent_layout)
+        }
+        Log.e("ImageDimensions","${Resources.getSystem().displayMetrics.heightPixels}")
+
+        backEnd=Box(textureView.width,textureView.height)
+//        runOnUiThread {
+//            val txForm=Matrix()
+//            textureView.getTransform(txForm)
+//            val textViewParams=textureView.layoutParams as ConstraintLayout.LayoutParams
+//            textViewParams.width=Resources.getSystem().displayMetrics.heightPixels*(9/16)
+//            textViewParams.height=Resources.getSystem().displayMetrics.heightPixels
+//            textureView.layoutParams=textViewParams
+//        }
 //        imageReader= ImageReader.newInstance(imageDimensions.width,imageDimensions.height,
 //        ImageFormat.RGB_565,50)
 //        imageReader.setOnImageAvailableListener({reader->
@@ -223,7 +247,7 @@ class MainActivity : AppCompatActivity() {
                     background.setStroke(15,Color.YELLOW)
                     //imageView.setImageBitmap(textureView.bitmap)
                     val lp=box.layoutParams
-                    lp.height=imageDimensions.height
+                    lp.height=textureView.height
                     lp.width=width
                     box.layoutParams=lp
                     val constraintSet=ConstraintSet()
@@ -231,9 +255,6 @@ class MainActivity : AppCompatActivity() {
                     Log.e("MarginsAre","${margin.marginStart}  ${margin.marginTop}")
                     constraintSet.connect(box.id,ConstraintSet.START,
                     parent_layout.id,ConstraintSet.START,margin.marginStart)
-
-                    constraintSet.connect(box.id,ConstraintSet.TOP,
-                        parent_layout.id,ConstraintSet.TOP,0)
                     constraintSet.applyTo(parent_layout)
                 }
                 Thread.sleep(5000)

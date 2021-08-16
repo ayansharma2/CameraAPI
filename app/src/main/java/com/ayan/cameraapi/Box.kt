@@ -1,5 +1,8 @@
 package com.ayan.cameraapi
 
+import android.util.Log
+import java.lang.Integer.max
+
 class Box(
     val width: Int,
     val height: Int,
@@ -20,7 +23,12 @@ class Box(
     }
 
     fun getConstraints():Margins{
-        val marginStart= (0..width-boxWidth).random()
+        Log.e("Width",width.toString())
+        Log.e("BoxWidth",boxWidth.toString())
+        var marginStart= (0..width-boxWidth).random()
+        if(marginStart+boxWidth>width){
+            marginStart=width-boxWidth-30
+        }
         return Margins(marginStart,height)
     }
 }

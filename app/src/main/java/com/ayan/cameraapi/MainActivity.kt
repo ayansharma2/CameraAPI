@@ -134,7 +134,7 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     private fun openCamera() {
         manager=getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        cameraId=manager.cameraIdList[0]
+        cameraId=manager.cameraIdList[1]
         val characteristics=manager.getCameraCharacteristics(cameraId)
         val map=characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         imageDimensions=map!!.getOutputSizes(SurfaceTexture::class.java)[0]

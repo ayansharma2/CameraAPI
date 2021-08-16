@@ -18,7 +18,7 @@ class Box(
 
     @JvmName("getBoxSize1")
     fun getBoxSize(): Int {
-        boxWidth=(width/2..width).random()
+        boxWidth=(width/2..width-30).random()
         return boxWidth
     }
 
@@ -26,9 +26,7 @@ class Box(
         Log.e("Width",width.toString())
         Log.e("BoxWidth",boxWidth.toString())
         var marginStart= (0..width-boxWidth).random()
-        if(marginStart+boxWidth>width){
-            marginStart=width-boxWidth-30
-        }
+        marginStart=max(0,marginStart-30)
         return Margins(marginStart,height)
     }
 }

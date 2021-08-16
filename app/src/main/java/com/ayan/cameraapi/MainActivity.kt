@@ -240,11 +240,11 @@ class MainActivity : AppCompatActivity() {
         val background= box.background as GradientDrawable
         thread {
             while(true){
-
-                val margin=backEnd.getConstraints()
                 val width=backEnd.getBoxSize()
+                val margin=backEnd.getConstraints()
+
                 runOnUiThread {
-                    background.setStroke(15,Color.YELLOW)
+                    //background.setStroke(15,Color.YELLOW)
                     //imageView.setImageBitmap(textureView.bitmap)
                     val lp=box.layoutParams
                     lp.height=textureView.height
@@ -257,7 +257,6 @@ class MainActivity : AppCompatActivity() {
                     parent_layout.id,ConstraintSet.START,margin.marginStart)
                     constraintSet.applyTo(parent_layout)
                 }
-                Thread.sleep(5000)
                 val image=InputImage.fromBitmap(textureView.bitmap,0)
                 val cropped=getRectangleShape(textureView.bitmap,margin,imageDimensions.height)
                 //imageView.setImageBitmap(croped)
@@ -291,7 +290,7 @@ class MainActivity : AppCompatActivity() {
                     .addOnFailureListener {
                         Log.e("Exception",it.toString())
                     }
-
+                Thread.sleep(2000)
             }
         }
     }

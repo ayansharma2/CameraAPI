@@ -118,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
-            openCamera()
+
         }
 
         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
@@ -153,9 +153,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onDisconnected(camera: CameraDevice) {
-            captureRequestBuilder.removeTarget(Surface(textureView.surfaceTexture))
-            //captureCameraSession.stopRepeating()
-            textureView.surfaceTextureListener= textureListener
+//            captureRequestBuilder.removeTarget(Surface(textureView.surfaceTexture))
+//            captureCameraSession.stopRepeating()
+            //textureView.surfaceTextureListener= textureListener
 
         }
 

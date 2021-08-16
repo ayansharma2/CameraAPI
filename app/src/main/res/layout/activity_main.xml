@@ -127,9 +127,9 @@
     <View
         android:layout_width="wrap_content"
         android:id="@+id/box"
+        android:layout_marginStart="5dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toTopOf="parent"
         android:background="@drawable/text_background"
         android:layout_height="wrap_content"/>

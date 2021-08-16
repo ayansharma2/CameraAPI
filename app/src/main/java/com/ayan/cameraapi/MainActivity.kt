@@ -180,7 +180,6 @@ class MainActivity : AppCompatActivity() {
             val margin=Resources.getSystem().displayMetrics.heightPixels-textureView.height
             constraintSet.connect(box.id,ConstraintSet.TOP,
                 parent_layout.id,ConstraintSet.TOP,margin/2)
-
             constraintSet.connect(box.id,ConstraintSet.BOTTOM,
                 parent_layout.id,ConstraintSet.BOTTOM,margin/2)
             constraintSet.applyTo(parent_layout)
@@ -243,19 +242,19 @@ class MainActivity : AppCompatActivity() {
                 val width=backEnd.getBoxSize()
                 val margin=backEnd.getConstraints()
 
-                runOnUiThread {
-                    //background.setStroke(15,Color.YELLOW)
-                    //imageView.setImageBitmap(textureView.bitmap)
+               runOnUiThread {
+//                    //background.setStroke(15,Color.YELLOW)
+//                    //imageView.setImageBitmap(textureView.bitmap)
                     val lp=box.layoutParams
                     lp.height=textureView.height
                     lp.width=width
                     box.layoutParams=lp
-                    val constraintSet=ConstraintSet()
-                    constraintSet.clone(parent_layout)
-                    Log.e("MarginsAre","${margin.marginStart}  ${margin.marginTop}")
-                    constraintSet.connect(box.id,ConstraintSet.START,
-                    parent_layout.id,ConstraintSet.START,margin.marginStart)
-                    constraintSet.applyTo(parent_layout)
+//                    val constraintSet=ConstraintSet()
+//                    constraintSet.clone(parent_layout)
+//                    Log.e("MarginsAre","${margin.marginStart}  ${margin.marginTop}")
+//                    constraintSet.connect(box.id,ConstraintSet.START,
+//                    parent_layout.id,ConstraintSet.START,margin.marginStart)
+//                    constraintSet.applyTo(parent_layout)
                 }
                 val image=InputImage.fromBitmap(textureView.bitmap,0)
                 val cropped=getRectangleShape(textureView.bitmap,margin,imageDimensions.height)

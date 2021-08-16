@@ -19,7 +19,7 @@ class Box(
     @JvmName("getBoxSize1")
     fun getBoxSize(): Int {
         boxWidth=(width/2..width-30).random()
-        return boxWidth
+        return width/2
     }
 
     fun getConstraints():Margins{
@@ -27,6 +27,6 @@ class Box(
         Log.e("BoxWidth",boxWidth.toString())
         var marginStart= (0..width-boxWidth).random()
         marginStart=max(0,marginStart-30)
-        return Margins(marginStart,height)
+        return Margins(0,height)
     }
 }

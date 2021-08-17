@@ -1,16 +1,15 @@
 package com.ayan.cameraapi
 
 import android.Manifest
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
+import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
 import android.hardware.camera2.*
-import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.os.Handler
-import android.os.HandlerThread
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
@@ -21,17 +20,24 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.pose.PoseDetection
 import com.google.mlkit.vision.pose.PoseDetector
-import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions
 import java.io.File
 
 import android.content.res.Resources
 import android.graphics.*
 import android.graphics.drawable.GradientDrawable
+import android.opengl.Visibility
+import android.os.*
 import android.util.DisplayMetrics
 import android.view.View
+import android.view.animation.Animation
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.animation.doOnEnd
+import com.google.gson.Gson
+import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
+import com.google.mlkit.vision.pose.PoseLandmark
+import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
 import kotlinx.coroutines.*
 import java.util.*
 import kotlin.concurrent.thread
@@ -42,77 +48,80 @@ class MainActivity : AppCompatActivity() {
     val textureView: AutoFitTextureView by lazy {
         findViewById<AutoFitTextureView>(R.id.texture_view)
     }
-    companion object{
-        const val CAMERA_REQUEST=2
+
+    companion object {
+        const val CAMERA_REQUEST = 2
     }
-    private lateinit var previewSurface:Surface
-    lateinit var cameraId:String
-    lateinit var cameraDevice:CameraDevice
+
+    private lateinit var previewSurface: Surface
+    lateinit var cameraId: String
+    lateinit var cameraDevice: CameraDevice
     lateinit var captureCameraSession: CameraCaptureSession
     lateinit var captureRequest: CaptureRequest
     lateinit var captureRequestBuilder: CaptureRequest.Builder
-    lateinit var leftEye:TextView
-    lateinit var rightEye:TextView
-    lateinit var parent_layout:ConstraintLayout
-    private lateinit var imageDimensions:Size
-//    lateinit var imageReader: ImageReader
-    lateinit var  file:File
+    lateinit var leftEye: TextView
+    lateinit var rightEye: TextView
+    lateinit var parent_layout: ConstraintLayout
+    private lateinit var imageDimensions: Size
+
+    //    lateinit var imageReader: ImageReader
+    lateinit var file: File
     lateinit var mBackgroundHandler: Handler
-    lateinit var mBackgroundThread:HandlerThread
-    lateinit var options:PoseDetectorOptions
+    lateinit var mBackgroundThread: HandlerThread
+    lateinit var options: AccuratePoseDetectorOptions
     private lateinit var button: Button
     private val ORIENTATIONS = SparseIntArray()
-    lateinit var imageView:ImageView
-    lateinit var eye:TextView
+    lateinit var imageView: ImageView
+    lateinit var eye: TextView
     lateinit var canvas: Canvas
+
     init {
         ORIENTATIONS.append(Surface.ROTATION_0, 0)
         ORIENTATIONS.append(Surface.ROTATION_90, 90)
         ORIENTATIONS.append(Surface.ROTATION_180, 180)
         ORIENTATIONS.append(Surface.ROTATION_270, 270)
     }
-    lateinit var box:View
-    lateinit var leftThumb:TextView
-    lateinit var rightThumb:TextView
-    lateinit var leftHeel:TextView
-    lateinit var rightHeel:TextView
-    lateinit var backEnd:Box
-    private lateinit var poseDetector:PoseDetector
+
+    lateinit var box: View
+    lateinit var backEnd: Box
+    lateinit var timerLayout: LinearLayout
+    lateinit var timer: TextView
+    lateinit var detecting: TextView
+    private lateinit var poseDetector: PoseDetector
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-       setContentView(R.layout.activity_main)
-        imageView=findViewById(R.id.image_view)
-        options=PoseDetectorOptions.Builder()
-            .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE)
+        setContentView(R.layout.activity_main)
+        imageView = findViewById(R.id.image_view)
+        options = AccuratePoseDetectorOptions.Builder()
+            .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
             .build()
-        eye=findViewById(R.id.eye_text)
-        leftThumb=findViewById(R.id.left_thumb)
-        rightThumb=findViewById(R.id.right_thumb)
-        parent_layout=findViewById(R.id.parent_layout)
-        leftHeel=findViewById(R.id.left_heel)
-        rightHeel=findViewById(R.id.right_heel)
-        mBackgroundThread= HandlerThread("camera Background")
+
+        parent_layout = findViewById(R.id.parent_layout)
+        mBackgroundThread = HandlerThread("camera Background")
         mBackgroundThread.start()
-        box=findViewById(R.id.box)
-        mBackgroundHandler=Handler(mBackgroundThread.looper)
-        button=findViewById(R.id.click)
+        box = findViewById(R.id.box)
+        timerLayout = findViewById(R.id.timer_layout)
+        timer = findViewById(R.id.timer)
+        detecting = findViewById(R.id.detecting)
+        mBackgroundHandler = Handler(mBackgroundThread.looper)
+        button = findViewById(R.id.click)
         button.setOnClickListener {
             takePicture()
         }
-        leftEye=findViewById(R.id.left_eye)
-        rightEye=findViewById(R.id.right_eye)
-        canvas= Canvas()
-        textureView.surfaceTextureListener= textureListener
-        poseDetector=PoseDetection.getClient(options)
+
+        canvas = Canvas()
+        textureView.surfaceTextureListener = textureListener
+        poseDetector = PoseDetection.getClient(options)
 
     }
 
-    var Viewheight=0
-    var Viewwidth=0
+    var Viewheight = 0
+    var Viewwidth = 0
     private fun takePicture() {
         TODO("Not yet implemented")
     }
-    private val textureListener=object : TextureView.SurfaceTextureListener {
+
+    private val textureListener = object : TextureView.SurfaceTextureListener {
         override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
             openCamera()
         }
@@ -131,24 +140,31 @@ class MainActivity : AppCompatActivity() {
 
     };
     lateinit var manager: CameraManager
+
     @SuppressLint("MissingPermission")
     private fun openCamera() {
-        manager=getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        cameraId=manager.cameraIdList[1]
-        val characteristics=manager.getCameraCharacteristics(cameraId)
-        val map=characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-        imageDimensions=map!!.getOutputSizes(SurfaceTexture::class.java)[0]
-        if(ContextCompat.checkSelfPermission(this,Manifest.permission.CAMERA)!=PackageManager.PERMISSION_GRANTED){
-            requestPermissions(arrayOf(Manifest.permission.CAMERA),
-                CAMERA_REQUEST)
+        manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        cameraId = manager.cameraIdList[1]
+        val characteristics = manager.getCameraCharacteristics(cameraId)
+        val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+        imageDimensions = map!!.getOutputSizes(SurfaceTexture::class.java)[0]
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.CAMERA
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_REQUEST
+            )
             return
         }
-        manager.openCamera(cameraId,stateCallback,mBackgroundHandler)
+        manager.openCamera(cameraId, stateCallback, mBackgroundHandler)
     }
 
-    private val stateCallback=object : CameraDevice.StateCallback() {
+    private val stateCallback = object : CameraDevice.StateCallback() {
         override fun onOpened(camera: CameraDevice) {
-            cameraDevice=camera
+            cameraDevice = camera
             createCameraPreview()
         }
 
@@ -167,26 +183,30 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("NewApi")
     private fun createCameraPreview() {
-        val texture=textureView.surfaceTexture
-        val displayMetrics=DisplayMetrics()
+        val texture = textureView.surfaceTexture
+        val displayMetrics = DisplayMetrics()
 
 
 
-        texture!!.setDefaultBufferSize(imageDimensions.height,imageDimensions.height)
+        texture!!.setDefaultBufferSize(imageDimensions.height, imageDimensions.height)
         runOnUiThread {
-            textureView.setAspectRatio(9,16)
-            val constraintSet=ConstraintSet()
+            textureView.setAspectRatio(9, 16)
+            val constraintSet = ConstraintSet()
             constraintSet.clone(parent_layout)
-            val margin=Resources.getSystem().displayMetrics.heightPixels-textureView.height
-            constraintSet.connect(box.id,ConstraintSet.TOP,
-                parent_layout.id,ConstraintSet.TOP,margin/2)
-            constraintSet.connect(box.id,ConstraintSet.BOTTOM,
-                parent_layout.id,ConstraintSet.BOTTOM,margin/2)
+            val margin = Resources.getSystem().displayMetrics.heightPixels - textureView.height
+            constraintSet.connect(
+                box.id, ConstraintSet.TOP,
+                parent_layout.id, ConstraintSet.TOP, margin / 2
+            )
+            constraintSet.connect(
+                box.id, ConstraintSet.BOTTOM,
+                parent_layout.id, ConstraintSet.BOTTOM, margin / 2
+            )
             constraintSet.applyTo(parent_layout)
         }
-        Log.e("ImageDimensions","${Resources.getSystem().displayMetrics.heightPixels}")
+        Log.e("ImageDimensions", "${Resources.getSystem().displayMetrics.heightPixels}")
 
-        backEnd=Box(textureView.width,textureView.height)
+        backEnd = Box(textureView.width, textureView.height)
 //        runOnUiThread {
 //            val txForm=Matrix()
 //            textureView.getTransform(txForm)
@@ -210,45 +230,128 @@ class MainActivity : AppCompatActivity() {
 //        },mBackgroundHandler)
 
 
-        val surface=Surface(texture)
-        captureRequestBuilder=cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+        val surface = Surface(texture)
+        captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         captureRequestBuilder.addTarget(surface)
         //captureRequestBuilder.addTarget(imageReader.surface)
-        cameraDevice.createCaptureSession(mutableListOf(surface),object :CameraCaptureSession.StateCallback(){
-            override fun onConfigured(session: CameraCaptureSession) {
-                captureCameraSession=session
-                updatePreview()
-            }
+        cameraDevice.createCaptureSession(
+            mutableListOf(surface),
+            object : CameraCaptureSession.StateCallback() {
+                override fun onConfigured(session: CameraCaptureSession) {
+                    captureCameraSession = session
+                    updatePreview()
+                }
 
-            override fun onConfigureFailed(session: CameraCaptureSession) {
+                override fun onConfigureFailed(session: CameraCaptureSession) {
 
-            }
+                }
 
-        },null)
+            },
+            null
+        )
     }
 
     private fun updatePreview() {
-        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE,CameraMetadata.CONTROL_MODE_AUTO)
-        captureCameraSession.setRepeatingRequest(captureRequestBuilder.build(),null,mBackgroundHandler)
-        startImages()
+        captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+        captureCameraSession.setRepeatingRequest(
+            captureRequestBuilder.build(),
+            null,
+            mBackgroundHandler
+        )
+        detectPerson()
 
+    }
+
+    private fun detectPerson() {
+        //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
+        thread {
+            var detected = true
+            while (true) {
+                Thread.sleep(1000)
+                val image = InputImage.fromBitmap(textureView.bitmap, 0)
+                //Log.e("ImageWidth",image.width.toString())
+                poseDetector.process(image)
+                    .addOnCompleteListener { pose ->
+                        Log.e("POSE", Gson().toJson(pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE)))
+                        if (pose.result.allPoseLandmarks.size>0 && pose.result.getPoseLandmark(PoseLandmark.NOSE).inFrameLikelihood>0.5 &&
+                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x >0 &&
+                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x <image.width
+                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y >0
+                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y <image.height &&
+                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x > 0 &&
+                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x <image.width &&
+                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y > 0 &&
+                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y < image.height &&
+                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x >0 &&
+                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x <image.width &&
+                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y >0 &&
+                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y <image.height
+                        ) {
+                            detected=true
+                        } else {
+                            runOnUiThread {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "No Person Detected",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                if (detected)
+                    break
+            }
+            runOnUiThread {
+                detecting.apply {
+                    animate()
+                        .alpha(0f)
+                        .setDuration(500)
+                        .setListener(object : AnimatorListenerAdapter(){
+                            override fun onAnimationEnd(animation: Animator?) {
+                                detecting.visibility=View.GONE
+                                timerLayout.visibility = View.VISIBLE
+                                var countDown = object : CountDownTimer(5000, 1000) {
+                                    override fun onTick(millisUntilFinished: Long) {
+                                        timer.text = "${millisUntilFinished / 1000}"
+                                    }
+
+                                    @SuppressLint("ObjectAnimatorBinding")
+                                    override fun onFinish() {
+
+                                        ObjectAnimator.ofFloat(timerLayout,"translationY",-300f)
+                                            .apply {
+                                                duration=1000
+                                                start()
+                                            }.doOnEnd {
+                                                timerLayout.visibility = View.GONE
+                                                startImages()
+                                            }
+
+                                    }
+                                }
+                                countDown.start()
+                            }
+                        })
+                }
+            }
+        }
     }
 
     @SuppressLint("InlinedApi")
     private fun startImages() {
-        val background= box.background as GradientDrawable
+        val background = box.background as GradientDrawable
         thread {
-            while(true){
-                val width=backEnd.getBoxSize()
-                val margin=backEnd.getConstraints()
+            while (true) {
+                val width = backEnd.getBoxSize()
+                val margin = backEnd.getConstraints()
 
-               runOnUiThread {
+                runOnUiThread {
 //                    //background.setStroke(15,Color.YELLOW)
 //                    //imageView.setImageBitmap(textureView.bitmap)
-                    val lp=box.layoutParams
-                    lp.height=textureView.height
-                    lp.width=width
-                    box.layoutParams=lp
+                    val lp = box.layoutParams
+                    lp.height = textureView.height
+                    lp.width = width
+                    box.layoutParams = lp
 //                    val constraintSet=ConstraintSet()
 //                    constraintSet.clone(parent_layout)
 //                    Log.e("MarginsAre","${margin.marginStart}  ${margin.marginTop}")
@@ -256,27 +359,39 @@ class MainActivity : AppCompatActivity() {
 //                    parent_layout.id,ConstraintSet.START,margin.marginStart)
 //                    constraintSet.applyTo(parent_layout)
                 }
-                val image=InputImage.fromBitmap(textureView.bitmap,0)
-                val cropped=getRectangleShape(textureView.bitmap,margin,imageDimensions.height)
+                var bitmap=textureView.bitmap
+                val image = InputImage.fromBitmap(bitmap, 0)
+                val cropped = Bitmap.createBitmap(bitmap!!,0,0,textureView.width/2,textureView.height)
                 //imageView.setImageBitmap(croped)
                 poseDetector.process(image)
-                    .addOnCompleteListener {pose->
-                        if(pose.result.allPoseLandmarks.size>0){
-                            poseDetector.process(InputImage.fromBitmap(cropped,0))
-                                .addOnCompleteListener {it->
-                                    if(it.result.allPoseLandmarks.size==0){
+                    .addOnCompleteListener { pose1 ->
+                        if (pose1.result.allPoseLandmarks.size > 0) {
+                            val image2=InputImage.fromBitmap(cropped,0)
+                            //imageView.setImageBitmap(cropped)
+                            poseDetector.process(image2)
+                                .addOnCompleteListener { pose ->
+                                    Log.e("Pose",Gson().toJson(pose))
+                                    if (pose.result.allPoseLandmarks.size >0 && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x >0 &&
+                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x<cropped.width &&
+                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y>0 &&
+                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height &&
+                                        pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x>0 &&
+                                        pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x<cropped.width &&
+                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y > 0 &&
+                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height
+                                    ) {
                                         runOnUiThread {
-                                            background.setStroke(15,Color.GREEN)
+                                            background.setStroke(15, Color.GREEN)
                                         }
-                                    }else{
+                                    } else {
                                         runOnUiThread {
-                                            background.setStroke(15,Color.RED)
+                                            background.setStroke(15, Color.RED)
                                         }
                                     }
                                 }
-                        }else{
+                        } else {
                             runOnUiThread {
-                                background.setStroke(15,Color.RED)
+                                background.setStroke(15, Color.RED)
                             }
                         }//else{
 //                            val constraintSet=ConstraintSet()
@@ -287,7 +402,7 @@ class MainActivity : AppCompatActivity() {
 //                        }
                     }
                     .addOnFailureListener {
-                        Log.e("Exception",it.toString())
+                        Log.e("Exception", it.toString())
                     }
                 Thread.sleep(2000)
             }
@@ -302,14 +417,15 @@ class MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
-        when(requestCode){
-            CAMERA_REQUEST->{
-                if(grantResults.isNotEmpty() && grantResults[0]==PackageManager.PERMISSION_GRANTED){
-                    Toast.makeText(this,"Permission Granted",Toast.LENGTH_LONG).show()
-                    manager.openCamera(cameraId,stateCallback,mBackgroundHandler)
+        when (requestCode) {
+            CAMERA_REQUEST -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
+                    manager.openCamera(cameraId, stateCallback, mBackgroundHandler)
                     //startCamera()
-                }else{
-                    Toast.makeText(this@MainActivity,"Permission Not granted",Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@MainActivity, "Permission Not granted", Toast.LENGTH_LONG)
+                        .show()
                 }
             }
         }
@@ -318,7 +434,11 @@ class MainActivity : AppCompatActivity() {
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     @Throws(CameraAccessException::class)
-    private fun getRotationCompensation(cameraId: String, activity: Activity, isFrontFacing: Boolean): Int {
+    private fun getRotationCompensation(
+        cameraId: String,
+        activity: Activity,
+        isFrontFacing: Boolean
+    ): Int {
         // Get the device's current rotation relative to its "native" orientation.
         // Then, from the ORIENTATIONS table, look up the angle the image must be
         // rotated to compensate for the device's rotation.
@@ -348,8 +468,13 @@ class MainActivity : AppCompatActivity() {
         )
         var canvas = Canvas(targetBitmap)
         val path = Path()
+
         path.addRect(
-            margin.marginStart.toFloat(),margin.marginTop.toFloat(),(margin.marginStart+height).toFloat(),(margin.marginStart+height).toFloat(),Path.Direction.CCW
+            0f,
+            0f,
+            (textureView.width/2).toFloat(),
+            0f,
+            Path.Direction.CCW
         )
         canvas.clipPath(path)
         canvas.drawBitmap(

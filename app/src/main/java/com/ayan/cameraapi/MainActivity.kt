@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity() {
     private fun detectPerson() {
         //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
         thread {
-            var detected = true
+            var detected = false
             while (true) {
                 Thread.sleep(1000)
                 val image = InputImage.fromBitmap(textureView.bitmap, 0)

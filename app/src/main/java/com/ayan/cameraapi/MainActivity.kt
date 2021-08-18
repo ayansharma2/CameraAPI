@@ -186,9 +186,7 @@ class MainActivity : AppCompatActivity() {
         val texture = textureView.surfaceTexture
         val displayMetrics = DisplayMetrics()
 
-
-
-        texture!!.setDefaultBufferSize(imageDimensions.height, imageDimensions.height)
+        texture!!.setDefaultBufferSize(imageDimensions.width,imageDimensions.height)
         runOnUiThread {
             textureView.setAspectRatio(9, 16)
             val constraintSet = ConstraintSet()
@@ -352,49 +350,22 @@ class MainActivity : AppCompatActivity() {
 //                    constraintSet.applyTo(parent_layout)
                 }
                 var bitmap=textureView.bitmap
-                val image = InputImage.fromBitmap(bitmap, 0)
                 val cropped = Bitmap.createBitmap(bitmap!!,0,0,textureView.width/2,textureView.height)
                 //imageView.setImageBitmap(croped)
-                poseDetector.process(image)
-                    .addOnCompleteListener { pose1 ->
-                        if (pose1.result.allPoseLandmarks.size > 0) {
-                            val image2=InputImage.fromBitmap(cropped,0)
-                            //imageView.setImageBitmap(cropped)
-                            poseDetector.process(image2)
-                                .addOnCompleteListener { pose ->
-                                    Log.e("Pose",Gson().toJson(pose))
-                                    if (pose.result.allPoseLandmarks.size >0 && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x >0 &&
-                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x<cropped.width &&
-                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y>0 &&
-                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height &&
-                                        pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x>0 &&
-                                        pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x<cropped.width &&
-                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y > 0 &&
-                                        pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height
-                                    ) {
-                                        runOnUiThread {
-                                            background.setStroke(15, Color.GREEN)
-                                        }
-                                    } else {
-                                        runOnUiThread {
-                                            background.setStroke(15, Color.RED)
-                                        }
-                                    }
-                                }
+                val image2=InputImage.fromBitmap(cropped,0)
+                //imageView.setImageBitmap(cropped)
+                poseDetector.process(image2)
+                    .addOnCompleteListener { pose ->
+                        Log.e("Pose",Gson().toJson(pose))
+                        if (pose.result.allPoseLandmarks.size >0) {
+                            runOnUiThread {
+                                background.setStroke(15, Color.GREEN)
+                            }
                         } else {
                             runOnUiThread {
                                 background.setStroke(15, Color.RED)
                             }
-                        }//else{
-//                            val constraintSet=ConstraintSet()
-//                            constraintSet.clone(parent_layout)
-//                            constraintSet.connect(eye.id,ConstraintSet.START,parent_layout.id,ConstraintSet.START,0)
-//                            constraintSet.connect(eye.id,ConstraintSet.TOP,parent_layout.id,ConstraintSet.TOP,0)
-//                            constraintSet.applyTo(parent_layout)
-//                        }
-                    }
-                    .addOnFailureListener {
-                        Log.e("Exception", it.toString())
+                        }
                     }
                 Thread.sleep(100)
             }

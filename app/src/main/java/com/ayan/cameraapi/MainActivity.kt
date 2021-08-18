@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         thread {
             var detected = false
             while (true) {
-                Thread.sleep(5000)
+                Thread.sleep(100)
                 val image = InputImage.fromBitmap(textureView.bitmap, 0)
                 //Log.e("ImageWidth",image.width.toString())
                 poseDetector.process(image)
@@ -288,14 +288,6 @@ class MainActivity : AppCompatActivity() {
                             pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y <image.height
                         ) {
                             detected=true
-                        } else {
-                            runOnUiThread {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "No Person Detected",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            }
                         }
                     }
                 if (detected)

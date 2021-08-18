@@ -396,7 +396,7 @@ class MainActivity : AppCompatActivity() {
                     .addOnFailureListener {
                         Log.e("Exception", it.toString())
                     }
-                Thread.sleep(2000)
+                Thread.sleep(100)
             }
         }
     }

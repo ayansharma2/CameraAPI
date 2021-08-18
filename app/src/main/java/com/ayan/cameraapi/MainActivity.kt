@@ -267,7 +267,7 @@ class MainActivity : AppCompatActivity() {
         thread {
             var detected = false
             while (true) {
-                Thread.sleep(1000)
+                Thread.sleep(5000)
                 val image = InputImage.fromBitmap(textureView.bitmap, 0)
                 //Log.e("ImageWidth",image.width.toString())
                 poseDetector.process(image)

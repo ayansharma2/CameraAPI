@@ -44,6 +44,7 @@
     <View
         android:layout_width="wrap_content"
         android:id="@+id/box"
+        android:visibility="gone"
         android:layout_marginStart="5dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -88,15 +89,5 @@
             android:textColor="@color/black"
             android:layout_height="wrap_content"/>
     </LinearLayout>
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:layout_width="wrap_content"
-        android:id="@+id/goToFallingBoxes"
-        android:src="@drawable/ic_forward"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_marginEnd="10dp"
-        android:layout_marginBottom="10dp"
-        app:tint="@color/white"
-        android:layout_height="wrap_content"/>
 </androidx.constraintlayout.widget.ConstraintLayout>
 

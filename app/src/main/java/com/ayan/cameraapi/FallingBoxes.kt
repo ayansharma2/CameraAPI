@@ -7,46 +7,36 @@ import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.res.Resources
+import android.graphics.*
+import android.graphics.drawable.GradientDrawable
 import android.hardware.camera2.*
+import android.os.*
 import androidx.appcompat.app.AppCompatActivity
+import android.util.DisplayMetrics
 import android.util.Log
 import android.util.Size
 import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
-import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.pose.PoseDetection
-import com.google.mlkit.vision.pose.PoseDetector
-import java.io.File
-
-import android.content.res.Resources
-import android.graphics.*
-import android.graphics.drawable.GradientDrawable
-import android.opengl.Visibility
-import android.os.*
-import android.util.DisplayMetrics
 import android.view.View
-import android.view.animation.Animation
 import android.widget.*
+import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.animation.doOnEnd
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+import androidx.core.content.ContextCompat
 import com.google.gson.Gson
-import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.pose.PoseDetection
+import com.google.mlkit.vision.pose.PoseDetector
 import com.google.mlkit.vision.pose.PoseLandmark
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
-import kotlinx.coroutines.*
-import java.util.*
+import java.io.File
 import kotlin.concurrent.thread
 
-
-class MainActivity : AppCompatActivity() {
-
+class FallingBoxes : AppCompatActivity() {
     val textureView: AutoFitTextureView by lazy {
         findViewById<AutoFitTextureView>(R.id.texture_view)
     }
@@ -75,8 +65,8 @@ class MainActivity : AppCompatActivity() {
     private val ORIENTATIONS = SparseIntArray()
     lateinit var imageView: ImageView
     lateinit var eye: TextView
-    lateinit var fab:FloatingActionButton
     lateinit var canvas: Canvas
+    var condition=true
     val shapes by lazy {
         arrayOf(
             getDrawable(R.drawable.tiangle_1), getDrawable(R.drawable.ic_polygon),
@@ -99,30 +89,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var poseDetector: PoseDetector
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_falling_boxes)
         imageView = findViewById(R.id.image_view)
         options = AccuratePoseDetectorOptions.Builder()
             .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
             .build()
-        fab=findViewById(R.id.goToFallingBoxes)
+
         parent_layout = findViewById(R.id.parent_layout)
         box = findViewById(R.id.box)
         timerLayout = findViewById(R.id.timer_layout)
         timer = findViewById(R.id.timer)
         detecting = findViewById(R.id.detecting)
+
         button = findViewById(R.id.click)
-        fab.setOnClickListener {
-            startActivity(Intent(this,FallingBoxes::class.java))
-        }
         button.setOnClickListener {
             takePicture()
         }
 
         canvas = Canvas()
         poseDetector = PoseDetection.getClient(options)
-
     }
-
     var Viewheight = 0
     var Viewwidth = 0
     private fun takePicture() {
@@ -139,6 +125,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+            condition=false
             return false;
         }
 
@@ -163,7 +150,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             requestPermissions(
                 arrayOf(Manifest.permission.CAMERA),
-                CAMERA_REQUEST
+                MainActivity.CAMERA_REQUEST
             )
             return
         }
@@ -177,14 +164,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onDisconnected(camera: CameraDevice) {
-//            captureRequestBuilder.removeTarget(Surface(textureView.surfaceTexture))
-//            captureCameraSession.stopRepeating()
-            //textureView.surfaceTextureListener= textureListener
-
+            cameraDevice.close()
         }
 
         override fun onError(camera: CameraDevice, error: Int) {
-            TODO("Not yet implemented")
+            cameraDevice.close()
         }
 
     }
@@ -350,11 +334,50 @@ class MainActivity : AppCompatActivity() {
     private fun startImages() {
         val background = box.background as GradientDrawable
         thread {
-            while (true) {
+            while (condition) {
                 val width = backEnd.getBoxSize()
                 val margin = backEnd.getConstraints()
 
                 runOnUiThread {
+                    if (count % 10 == 0) {
+                        marginStart =
+                            textureView.width / 2 - 100//(0..textureView.width-200).random()
+                        view1 = ImageView(this@FallingBoxes)
+                        index = (shapes.indices).random()
+                        view1.setImageDrawable(shapes[index])
+                        val set = ConstraintSet()
+                        view1.id = View.generateViewId()
+                        parent_layout.addView(view1)
+                        var lp = view1.layoutParams
+                        lp.height = 200
+                        lp.width = 200
+                        view1.layoutParams = lp
+                        set.clone(parent_layout)
+                        set.connect(
+                            view1.id,
+                            ConstraintSet.START,
+                            textureView.id,
+                            ConstraintSet.START,
+                            marginStart
+                        )
+                        set.connect(view1.id, ConstraintSet.TOP, textureView.id, ConstraintSet.TOP)
+                        set.applyTo(parent_layout)
+                        ObjectAnimator.ofFloat(
+                            view1,
+                            "translationY",
+                            (textureView.height - 200).toFloat()
+                        )
+                            .apply {
+                                duration = 1000
+                                start()
+                            }.doOnEnd {
+                                parent_layout.removeView(view1)
+
+                            }
+
+                    }
+                    marginTop+=(textureView.height)
+                    count++;
 //                    //background.setStroke(15,Color.YELLOW)
 //                    //imageView.setImageBitmap(textureView.bitmap)
                     val lp = box.layoutParams
@@ -368,21 +391,52 @@ class MainActivity : AppCompatActivity() {
 //                    parent_layout.id,ConstraintSet.START,margin.marginStart)
 //                    constraintSet.applyTo(parent_layout)
                 }
-                var bitmap=textureView.bitmap
-                val cropped = Bitmap.createBitmap(bitmap!!,0,0,textureView.width/2,textureView.height)
+                var bitmap = textureView.bitmap
+                val cropped = Bitmap.createBitmap(bitmap!!, marginStart, 0, 200, textureView.height)
                 //imageView.setImageBitmap(croped)
-                val image2=InputImage.fromBitmap(cropped,0)
+                val image2 = InputImage.fromBitmap(cropped, 0)
                 //imageView.setImageBitmap(cropped)
                 poseDetector.process(image2)
                     .addOnCompleteListener { pose ->
-                        Log.e("Pose",Gson().toJson(pose))
-                        if (pose.result.allPoseLandmarks.size >0) {
+                        Log.e("Pose", Gson().toJson(pose))
+                        if (pose.result.allPoseLandmarks.size > 0 && pose.result.getPoseLandmark(
+                                PoseLandmark.NOSE).position.x>0
+                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x<cropped.width
+                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y>0
+                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height
+                            && ((pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x>0 &&
+                                    pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x<cropped.width
+                                    && pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y>0
+                                    && pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y<cropped.height) ||
+                                    (pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x>0 &&
+                                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x<cropped.width
+                                            && pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y>0
+                                            && pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y<cropped.height)
+                                    )) {
                             runOnUiThread {
-                                background.setStroke(15, Color.GREEN)
+                                when (index) {
+                                    0 -> {
+                                        view1.setImageDrawable(getDrawable(R.drawable.ic_green_triangle))
+                                    }
+                                    1 -> {
+                                        view1.setImageDrawable(getDrawable(R.drawable.ic_polygon_green))
+                                    }
+                                    2 -> {
+                                        view1.setImageDrawable(getDrawable(R.drawable.ic_green_square))
+                                    }
+                                }
                             }
                         } else {
-                            runOnUiThread {
-                                background.setStroke(15, Color.RED)
+                            when (index) {
+                                0 -> {
+                                    view1.setImageDrawable(getDrawable(R.drawable.ic_red_triangle))
+                                }
+                                1 -> {
+                                    view1.setImageDrawable(getDrawable(R.drawable.ic_polygon_red))
+                                }
+                                2 -> {
+                                    view1.setImageDrawable(getDrawable(R.drawable.ic_red_square))
+                                }
                             }
                         }
                     }
@@ -400,13 +454,13 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         when (requestCode) {
-            CAMERA_REQUEST -> {
+            MainActivity.CAMERA_REQUEST -> {
                 if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
                     manager.openCamera(cameraId, stateCallback, mBackgroundHandler)
                     //startCamera()
                 } else {
-                    Toast.makeText(this@MainActivity, "Permission Not granted", Toast.LENGTH_LONG)
+                    Toast.makeText(this@FallingBoxes, "Permission Not granted", Toast.LENGTH_LONG)
                         .show()
                 }
             }
@@ -472,8 +526,6 @@ class MainActivity : AppCompatActivity() {
         )
         return targetBitmap
     }
-
-
     override fun onResume() {
         super.onResume()
         startBackGroundThread()

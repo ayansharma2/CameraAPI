@@ -3,8 +3,16 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/green_background.xml" value="0.1175925925925926" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/ic_green_square.xml" value="0.15833333333333333" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/ic_polygon.xml" value="0.15833333333333333" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/ic_rectangle.xml" value="0.15833333333333333" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/red_background.xml" value="0.1175925925925926" />
         <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/text_background.xml" value="0.14166666666666666" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/tiangle_1.xml" value="0.15833333333333333" />
         <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/timer_background.xml" value="0.13240740740740742" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/drawable/traiangle.xml" value="0.12314814814814815" />
+        <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/layout/activity_falling_boxes.xml" value="0.1" />
         <entry key="..\:/Users/LENOVO/Desktop/CameraAPI/app/src/main/res/layout/activity_main.xml" value="0.22" />
       </map>
     </option>

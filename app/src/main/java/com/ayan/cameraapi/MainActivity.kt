@@ -1,9 +1,7 @@
 package com.ayan.cameraapi
 
 import android.Manifest
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
-import android.animation.ObjectAnimator
+import android.animation.*
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -25,7 +23,7 @@ import java.io.File
 
 import android.content.res.Resources
 import android.graphics.*
-import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.*
 import android.opengl.Visibility
 import android.os.*
 import android.util.DisplayMetrics
@@ -35,6 +33,8 @@ import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.animation.doOnEnd
+import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.graphics.drawable.toBitmap
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
 import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
@@ -43,6 +43,12 @@ import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
 import kotlinx.coroutines.*
 import java.util.*
 import kotlin.concurrent.thread
+import android.graphics.drawable.Drawable
+
+import androidx.appcompat.content.res.AppCompatResources
+
+
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -68,14 +74,14 @@ class MainActivity : AppCompatActivity() {
 
     //    lateinit var imageReader: ImageReader
     lateinit var file: File
-    var mBackgroundHandler: Handler?=null
-    var mBackgroundThread: HandlerThread?=null
+    var mBackgroundHandler: Handler? = null
+    var mBackgroundThread: HandlerThread? = null
     lateinit var options: AccuratePoseDetectorOptions
     private lateinit var button: Button
     private val ORIENTATIONS = SparseIntArray()
     lateinit var imageView: ImageView
     lateinit var eye: TextView
-    lateinit var fab:FloatingActionButton
+    lateinit var fab: FloatingActionButton
     lateinit var canvas: Canvas
     val shapes by lazy {
         arrayOf(
@@ -104,7 +110,7 @@ class MainActivity : AppCompatActivity() {
         options = AccuratePoseDetectorOptions.Builder()
             .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
             .build()
-        fab=findViewById(R.id.goToFallingBoxes)
+        fab = findViewById(R.id.goToFallingBoxes)
         parent_layout = findViewById(R.id.parent_layout)
         box = findViewById(R.id.box)
         timerLayout = findViewById(R.id.timer_layout)
@@ -112,7 +118,7 @@ class MainActivity : AppCompatActivity() {
         detecting = findViewById(R.id.detecting)
         button = findViewById(R.id.click)
         fab.setOnClickListener {
-            startActivity(Intent(this,FallingBoxes::class.java))
+            startActivity(Intent(this, FallingBoxes::class.java))
         }
         button.setOnClickListener {
             takePicture()
@@ -188,7 +194,7 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
-
+    var margin=0
     @SuppressLint("NewApi")
     private fun createCameraPreview() {
         val texture = textureView.surfaceTexture
@@ -199,7 +205,7 @@ class MainActivity : AppCompatActivity() {
             textureView.setAspectRatio(9, 16)
             val constraintSet = ConstraintSet()
             constraintSet.clone(parent_layout)
-            val margin = Resources.getSystem().displayMetrics.heightPixels - textureView.height
+            margin = Resources.getSystem().displayMetrics.heightPixels - textureView.height
             constraintSet.connect(
                 box.id, ConstraintSet.TOP,
                 parent_layout.id, ConstraintSet.TOP, margin / 2
@@ -264,14 +270,14 @@ class MainActivity : AppCompatActivity() {
             null,
             mBackgroundHandler
         )
-        detectPerson()
-        //startImages()
+        //detectPerson()
+        startImages()
     }
 
     private fun detectPerson() {
         //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
         thread {
-            var detected = false
+            var detected = true
             while (true) {
                 Thread.sleep(100)
                 val image = InputImage.fromBitmap(textureView.bitmap, 0)
@@ -341,52 +347,211 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("InlinedApi")
-    var count = 0
-    var marginStart = 0
-    var index = 0
-    var marginTop=0
-    var bitmap: Bitmap? =null
-    lateinit var view1: ImageView
     private fun startImages() {
-        val background = box.background as GradientDrawable
+        var completed = true
+        var i = 0
         thread {
             while (true) {
-                val width = backEnd.getBoxSize()
-                val margin = backEnd.getConstraints()
+                if (completed) {
 
-                runOnUiThread {
-//                    //background.setStroke(15,Color.YELLOW)
-//                    //imageView.setImageBitmap(textureView.bitmap)
-                    val lp = box.layoutParams
-                    lp.height = textureView.height
-                    lp.width = width
-                    box.layoutParams = lp
-//                    val constraintSet=ConstraintSet()
-//                    constraintSet.clone(parent_layout)
-//                    Log.e("MarginsAre","${margin.marginStart}  ${margin.marginTop}")
-//                    constraintSet.connect(box.id,ConstraintSet.START,
-//                    parent_layout.id,ConstraintSet.START,margin.marginStart)
-//                    constraintSet.applyTo(parent_layout)
-                }
-                var bitmap=textureView.bitmap
-                val cropped = Bitmap.createBitmap(bitmap!!,0,0,textureView.width/2,textureView.height)
-                //imageView.setImageBitmap(croped)
-                val image2=InputImage.fromBitmap(cropped,0)
-                //imageView.setImageBitmap(cropped)
-                poseDetector.process(image2)
-                    .addOnCompleteListener { pose ->
-                        Log.e("Pose",Gson().toJson(pose))
-                        if (pose.result.allPoseLandmarks.size >0) {
+                    when (i) {
+                        0 -> {
+                           runOnUiThread {
+                               Log.e("Codition1", "Yes")
+                               val imageView = CustomRectangle(this@MainActivity,textureView.height,textureView.width,margin/2,0,)
+                               val set = ConstraintSet()
+                               parent_layout.addView(imageView)
+                               imageView.id = View.generateViewId()
+                               set.clone(parent_layout)
+                               set.connect(
+                                   imageView.id,
+                                   ConstraintSet.START,
+                                   textureView.id,
+                                   ConstraintSet.START
+                               )
+                               set.connect(
+                                   imageView.id,
+                                   ConstraintSet.TOP,
+                                   textureView.id,
+                                   ConstraintSet.TOP
+                               )
+                               set.connect(
+                                   imageView.id,
+                                   ConstraintSet.BOTTOM,
+                                   textureView.id,
+                                   ConstraintSet.BOTTOM
+                               )
+                               set.applyTo(parent_layout)
+                           }
+                        }
+                        1 -> {
                             runOnUiThread {
-                                background.setStroke(15, Color.GREEN)
-                            }
-                        } else {
-                            runOnUiThread {
-                                background.setStroke(15, Color.RED)
+                                val imageView = ImageView(this@MainActivity)
+                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
+                                DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
+                                imageView.setImageDrawable(drawable)
+                                imageView.id = View.generateViewId()
+                                imageView.alpha = 0.5f
+                                val set = ConstraintSet()
+                                parent_layout.addView(imageView)
+                                set.clone(parent_layout)
+                                imageView.id = View.generateViewId()
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.START,
+                                    parent_layout.id,
+                                    ConstraintSet.START
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.TOP,
+                                    textureView.id,
+                                    ConstraintSet.TOP
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.BOTTOM,
+                                    textureView.id,
+                                    ConstraintSet.BOTTOM
+                                )
+                                set.applyTo(parent_layout)
+                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
+                                lp.width = textureView.width / 2
+                                lp.height = textureView.height
                             }
                         }
+                        2 -> {
+                            runOnUiThread {
+                                val imageView = ImageView(this@MainActivity)
+                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
+                                DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
+                                imageView.setImageDrawable(drawable)
+                                imageView.alpha = 0.5f
+                                imageView.id = View.generateViewId()
+                                val set = ConstraintSet()
+                                parent_layout.addView(imageView)
+                                set.clone(parent_layout)
+                                imageView.id = View.generateViewId()
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.START,
+                                    parent_layout.id,
+                                    ConstraintSet.START
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.TOP,
+                                    textureView.id,
+                                    ConstraintSet.TOP
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.BOTTOM,
+                                    textureView.id,
+                                    ConstraintSet.BOTTOM
+                                )
+                                set.applyTo(parent_layout)
+                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
+                                lp.width = textureView.width / 2
+                                lp.height = textureView.height
+                                var matrix = Matrix()
+                                imageView.scaleType = ImageView.ScaleType.MATRIX
+                                matrix.postRotate(90f)
+                                imageView.imageMatrix = matrix
+                            }
+                        }
+                        3 -> {
+                            runOnUiThread {
+                                val imageView = ImageView(this@MainActivity)
+                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
+                                var bitmap=(drawable as VectorDrawable).toBitmap(textureView.width,textureView.height,Bitmap.Config.ARGB_8888)
+//                                var newDrawable=VectorDrawable(resources,Bitmap.createScaledBitmap(bitmap,textureView.width,textureView.height,false))
+                                //DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
+                                imageView.setImageBitmap(bitmap)
+                                //imageView.scaleType=ImageView.ScaleType.FIT_XY
+                                //imageView.alpha = 0.5f
+                                imageView.id = View.generateViewId()
+                                val set = ConstraintSet()
+                                parent_layout.addView(imageView)
+                                set.clone(parent_layout)
+                                //imageView.id = View.generateViewId()
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.START,
+                                    parent_layout.id,
+                                    ConstraintSet.START
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.TOP,
+                                    textureView.id,
+                                    ConstraintSet.TOP
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.BOTTOM,
+                                    textureView.id,
+                                    ConstraintSet.BOTTOM
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.END,
+                                    textureView.id,
+                                    ConstraintSet.END
+                                )
+                                set.applyTo(parent_layout)
+                                var matrix = Matrix()
+                                var lp=imageView.layoutParams as ConstraintLayout.LayoutParams
+                                lp.height=textureView.height
+                                lp.width=textureView.width
+                                imageView.layoutParams=lp
+                                imageView.scaleType = ImageView.ScaleType.MATRIX
+                                matrix.postRotate(-90f)
+                                //imageView.imageMatrix = matrix
+
+                            }
+                        }
+                        4 -> {
+                            runOnUiThread {
+                                val imageView = ImageView(this@MainActivity)
+                                imageView.setImageDrawable(getDrawable(R.drawable.ic_transparent_rectangle))
+                                imageView.setBackgroundColor(0xFFFC0CB)
+                                imageView.alpha = 0.5f
+                                imageView.id = View.generateViewId()
+                                val set = ConstraintSet()
+                                parent_layout.addView(imageView)
+                                set.clone(parent_layout)
+                                imageView.id = View.generateViewId()
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.START,
+                                    parent_layout.id,
+                                    ConstraintSet.START
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.END,
+                                    textureView.id,
+                                    ConstraintSet.END
+                                )
+                                set.connect(
+                                    imageView.id,
+                                    ConstraintSet.BOTTOM,
+                                    textureView.id,
+                                    ConstraintSet.BOTTOM
+                                )
+                                set.applyTo(parent_layout)
+                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
+                                lp.width = textureView.width
+                                lp.height = textureView.height / 2
+                            }
+                        }
+
                     }
-                Thread.sleep(100)
+                }
+                //i++
+                completed = false
+                Thread.sleep(1000)
             }
         }
     }
@@ -477,17 +642,17 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         startBackGroundThread()
-        if(textureView.isAvailable){
+        if (textureView.isAvailable) {
             openCamera()
-        }else{
+        } else {
             textureView.surfaceTextureListener = textureListener
         }
     }
 
     private fun startBackGroundThread() {
-        mBackgroundThread= HandlerThread("Camera Thread")
+        mBackgroundThread = HandlerThread("Camera Thread")
         mBackgroundThread!!.start()
-        mBackgroundHandler=Handler(mBackgroundThread!!.looper)
+        mBackgroundHandler = Handler(mBackgroundThread!!.looper)
     }
 
     override fun onPause() {
@@ -500,7 +665,7 @@ class MainActivity : AppCompatActivity() {
 
         mBackgroundThread!!.quitSafely()
         mBackgroundThread!!.join()
-        mBackgroundThread=null
-        mBackgroundHandler=null
+        mBackgroundThread = null
+        mBackgroundHandler = null
     }
 }

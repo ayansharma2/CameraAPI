@@ -248,7 +248,7 @@ class MainActivity : AppCompatActivity() {
     private fun detectPerson() {
         //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
         thread {
-            var detected = false
+            var detected = true
             while (true) {
                 Thread.sleep(100)
                 val image = InputImage.fromBitmap(textureView.bitmap!!, 0)
@@ -368,13 +368,21 @@ class MainActivity : AppCompatActivity() {
 
     var i = 0
     var imageView: CustomRectangle? = null
-
+    var time=0
     @SuppressLint("InlinedApi")
     private fun startImages() {
         var isDetecting=false
         updateUI()
         thread {
             while (i<5) {
+                if(time==3000){
+                    increment()
+                    runOnUiThread {
+                        updateUI()
+                    }
+                    Thread.sleep(1000)
+                    time=0
+                }
                 if(!isDetecting){
                     isDetecting=true
                     var completeBitmap = textureView.bitmap
@@ -469,16 +477,14 @@ class MainActivity : AppCompatActivity() {
                                     increment()
                                 }
                                 Thread.sleep(2500)
-                                runOnUiThread {
-                                    updateUI()
-                                }
-                                Thread.sleep(1000)
+                                time=0
                             }
                             isDetecting=false
                         })
                 }
 
                 Thread.sleep(100)
+                time+=100
             }
         }
     }

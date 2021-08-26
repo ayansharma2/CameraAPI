@@ -241,14 +241,14 @@ class MainActivity : AppCompatActivity() {
             null,
             mBackgroundHandler
         )
-        detectPerson()
-        //startImages()
+        //detectPerson()
+        startImages()
     }
 
     private fun detectPerson() {
         //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
         thread {
-            var detected = true
+            var detected = false
             while (true) {
                 Thread.sleep(100)
                 val image = InputImage.fromBitmap(textureView.bitmap!!, 0)
@@ -369,19 +369,33 @@ class MainActivity : AppCompatActivity() {
     var i = 0
     var imageView: CustomRectangle? = null
     var time=0
+    fun incrementTime(add:Int=100){
+        synchronized(this){
+            if(add==0){
+                time=0
+            }else
+            time+=100
+        }
+    }
     @SuppressLint("InlinedApi")
     private fun startImages() {
         var isDetecting=false
         updateUI()
         thread {
+
             while (i<5) {
+                //Log.e("Time",time.toString())
+                runOnUiThread {
+                    //Log.e("TempAlpha",(100+(155*(time/3000)).toInt()).toString())
+                    imageView!!.tempAlpha()
+                }
                 if(time==3000){
-                    increment()
                     runOnUiThread {
+                        increment()
                         updateUI()
                     }
                     Thread.sleep(1000)
-                    time=0
+                    incrementTime(0)
                 }
                 if(!isDetecting){
                     isDetecting=true
@@ -464,9 +478,6 @@ class MainActivity : AppCompatActivity() {
                             ) {
                                 //detecting.setText(poses.result.getPoseLandmark(PoseLandmark.NOSE).position.toString())
                                 runOnUiThread {
-                                    tempImageView.setImageBitmap(cropped)
-                                }
-                                runOnUiThread {
 
                                     var animator = ValueAnimator.ofInt(100, 255)
                                     animator.duration = 2000
@@ -477,14 +488,17 @@ class MainActivity : AppCompatActivity() {
                                     increment()
                                 }
                                 Thread.sleep(2500)
+                                runOnUiThread {
+                                    updateUI()
+                                }
+                                Thread.sleep(1000)
                                 time=0
                             }
                             isDetecting=false
                         })
                 }
-
+                incrementTime(100)
                 Thread.sleep(100)
-                time+=100
             }
         }
     }

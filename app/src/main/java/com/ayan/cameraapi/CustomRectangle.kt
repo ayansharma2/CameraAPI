@@ -25,7 +25,7 @@ class CustomRectangle : View {
         this.type = type
     }
     init {
-        mPaint.color= Color.RED
+        mPaint.color= 0xFdb5677
         mPaint.alpha=100
         when(type){
             0->{
@@ -46,12 +46,16 @@ class CustomRectangle : View {
 
         }
     }
+    fun tempAlpha(){
+        mPaint.alpha=mPaint.alpha+5
+        postInvalidate()
+    }
     fun changeColor(newColor:Int){
         mPaint.color=newColor
         postInvalidate()
     }
     fun changeAlpha(newAlpha:Int){
-        mPaint.color=Color.BLUE
+        mPaint.color=0xF14b5a5
         mPaint.alpha=newAlpha
         postInvalidate()
     }

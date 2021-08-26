@@ -23,7 +23,7 @@
     <ImageView
         android:id="@+id/image_view"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_height="match_parent"
+        android:layout_height="200dp"
         android:layout_width="200dp"
         android:elevation="5dp"
         android:visibility="gone"
@@ -93,6 +93,7 @@
         android:layout_width="wrap_content"
         android:id="@+id/goToFallingBoxes"
         android:src="@drawable/ic_forward"
+        android:visibility="gone"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         android:layout_marginEnd="10dp"

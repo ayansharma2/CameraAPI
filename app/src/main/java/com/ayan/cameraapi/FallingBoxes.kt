@@ -4,6 +4,7 @@ import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
@@ -25,6 +26,7 @@ import android.widget.*
 import androidx.annotation.RequiresApi
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
+import androidx.core.animation.addListener
 import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
 import com.google.gson.Gson
@@ -258,29 +260,29 @@ class FallingBoxes : AppCompatActivity() {
             var detected = false
             while (true) {
                 Thread.sleep(100)
-                val image = InputImage.fromBitmap(textureView.bitmap, 0)
+                val image = InputImage.fromBitmap(textureView.bitmap!!, 0)
                 //Log.e("ImageWidth",image.width.toString())
                 poseDetector.process(image)
-                    .addOnCompleteListener { pose ->
+                    .addOnCompleteListener { poses ->
                         Log.e(
                             "POSE",
-                            Gson().toJson(pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE))
+                            Gson().toJson(poses.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE))
                         )
-                        if (pose.result.allPoseLandmarks.size > 0 && pose.result.getPoseLandmark(
+                        if (poses.result!!.allPoseLandmarks.size > 0 && poses.result!!.getPoseLandmark(
                                 PoseLandmark.NOSE
                             ).inFrameLikelihood > 0.5 &&
-                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x < image.width
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y > 0
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y < image.height &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x < image.width &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y < image.height &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x < image.width &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y < image.height
+                            poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x > 0 &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x < image.width
+                            && poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y > 0
+                            && poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y < image.height &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x > 0 &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x < image.width &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y > 0 &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y < image.height &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x > 0 &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x < image.width &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y > 0 &&
+                            poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y < image.height
                         ) {
                             detected = true
                         }
@@ -397,21 +399,21 @@ class FallingBoxes : AppCompatActivity() {
                 val image2 = InputImage.fromBitmap(cropped, 0)
                 //imageView.setImageBitmap(cropped)
                 poseDetector.process(image2)
-                    .addOnCompleteListener { pose ->
-                        Log.e("Pose", Gson().toJson(pose))
-                        if (pose.result.allPoseLandmarks.size > 0 && pose.result.getPoseLandmark(
+                    .addOnCompleteListener { poses ->
+
+                        if (poses.result!!.allPoseLandmarks.size > 0 && poses.result!!.getPoseLandmark(
                                 PoseLandmark.NOSE).position.x>0
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x<cropped.width
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y>0
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height
-                            && ((pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x>0 &&
-                                    pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x<cropped.width
-                                    && pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y>0
-                                    && pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y<cropped.height) ||
-                                    (pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x>0 &&
-                                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x<cropped.width
-                                            && pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y>0
-                                            && pose.result.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y<cropped.height)
+                            && poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x<cropped.width
+                            && poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y>0
+                            && poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y<cropped.height
+                            && ((poses.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x>0 &&
+                                    poses.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.x<cropped.width
+                                    && poses.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y>0
+                                    && poses.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE).position.y<cropped.height) ||
+                                    (poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x>0 &&
+                                            poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.x<cropped.width
+                                            && poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y>0
+                                            && poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_KNEE).position.y<cropped.height)
                                     )) {
                             runOnUiThread {
                                 when (index) {
@@ -556,3 +558,43 @@ class FallingBoxes : AppCompatActivity() {
         mBackgroundHandler=null
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

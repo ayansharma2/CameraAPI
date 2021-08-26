@@ -17,28 +17,20 @@ import android.view.TextureView
 import androidx.annotation.RequiresApi
 import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.pose.PoseDetection
-import com.google.mlkit.vision.pose.PoseDetector
 import java.io.File
 
 import android.content.res.Resources
 import android.graphics.*
 import android.graphics.drawable.*
-import android.opengl.Visibility
 import android.os.*
 import android.util.DisplayMetrics
 import android.view.View
-import android.view.animation.Animation
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.animation.doOnEnd
-import androidx.core.graphics.drawable.DrawableCompat
-import androidx.core.graphics.drawable.toBitmap
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.gson.Gson
-import com.google.mlkit.vision.pose.PoseDetectorOptionsBase
-import com.google.mlkit.vision.pose.PoseLandmark
 import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
 import kotlinx.coroutines.*
 import java.util.*
@@ -46,9 +38,12 @@ import kotlin.concurrent.thread
 import android.graphics.drawable.Drawable
 
 import androidx.appcompat.content.res.AppCompatResources
-
-
-
+import androidx.core.animation.addListener
+import androidx.core.graphics.get
+import com.google.mlkit.vision.pose.*
+import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 
 class MainActivity : AppCompatActivity() {
@@ -79,16 +74,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var options: AccuratePoseDetectorOptions
     private lateinit var button: Button
     private val ORIENTATIONS = SparseIntArray()
-    lateinit var imageView: ImageView
     lateinit var eye: TextView
     lateinit var fab: FloatingActionButton
     lateinit var canvas: Canvas
-    val shapes by lazy {
-        arrayOf(
-            getDrawable(R.drawable.tiangle_1), getDrawable(R.drawable.ic_polygon),
-            getDrawable(R.drawable.ic_rectangle)
-        )
-    }
+    lateinit var tempImageView: ImageView
+    val executorService: ExecutorService = Executors.newFixedThreadPool(4)
+
 
     init {
         ORIENTATIONS.append(Surface.ROTATION_0, 0)
@@ -102,11 +93,12 @@ class MainActivity : AppCompatActivity() {
     lateinit var timerLayout: LinearLayout
     lateinit var timer: TextView
     lateinit var detecting: TextView
+
     private lateinit var poseDetector: PoseDetector
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        imageView = findViewById(R.id.image_view)
+        tempImageView=findViewById(R.id.image_view)
         options = AccuratePoseDetectorOptions.Builder()
             .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
             .build()
@@ -115,6 +107,7 @@ class MainActivity : AppCompatActivity() {
         box = findViewById(R.id.box)
         timerLayout = findViewById(R.id.timer_layout)
         timer = findViewById(R.id.timer)
+        poseDetector = PoseDetection.getClient(options)
         detecting = findViewById(R.id.detecting)
         button = findViewById(R.id.click)
         fab.setOnClickListener {
@@ -123,9 +116,9 @@ class MainActivity : AppCompatActivity() {
         button.setOnClickListener {
             takePicture()
         }
-
+        //updateUI()
         canvas = Canvas()
-        poseDetector = PoseDetection.getClient(options)
+
 
     }
 
@@ -194,7 +187,8 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
-    var margin=0
+    var margin = 0
+
     @SuppressLint("NewApi")
     private fun createCameraPreview() {
         val texture = textureView.surfaceTexture
@@ -219,29 +213,6 @@ class MainActivity : AppCompatActivity() {
         Log.e("ImageDimensions", "${Resources.getSystem().displayMetrics.heightPixels}")
 
         backEnd = Box(textureView.width, textureView.height)
-//        runOnUiThread {
-//            val txForm=Matrix()
-//            textureView.getTransform(txForm)
-//            val textViewParams=textureView.layoutParams as ConstraintLayout.LayoutParams
-//            textViewParams.width=Resources.getSystem().displayMetrics.heightPixels*(9/16)
-//            textViewParams.height=Resources.getSystem().displayMetrics.heightPixels
-//            textureView.layoutParams=textViewParams
-//        }
-//        imageReader= ImageReader.newInstance(imageDimensions.width,imageDimensions.height,
-//        ImageFormat.RGB_565,50)
-//        imageReader.setOnImageAvailableListener({reader->
-//            val img=reader.acquireLatestImage()
-//            val image=InputImage.fromMediaImage(img,getRotationCompensation(cameraId,this,false))
-//            poseDetector.process(image)
-//                .addOnCompleteListener {
-//                    Log.e("Result",it.toString())
-//                }
-//            imageReader.discardFreeBuffers()
-//            //reader.close()
-//
-//        },mBackgroundHandler)
-
-
         val surface = Surface(texture)
         captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
         captureRequestBuilder.addTarget(surface)
@@ -270,39 +241,37 @@ class MainActivity : AppCompatActivity() {
             null,
             mBackgroundHandler
         )
-        //detectPerson()
-        startImages()
+        detectPerson()
+        //startImages()
     }
 
     private fun detectPerson() {
         //Log.e("ScreenWidth","${textureView.width}  ${textureView.height}")
         thread {
-            var detected = true
+            var detected = false
             while (true) {
                 Thread.sleep(100)
-                val image = InputImage.fromBitmap(textureView.bitmap, 0)
+                val image = InputImage.fromBitmap(textureView.bitmap!!, 0)
                 //Log.e("ImageWidth",image.width.toString())
                 poseDetector.process(image)
                     .addOnCompleteListener { pose ->
                         Log.e(
                             "POSE",
-                            Gson().toJson(pose.result.getPoseLandmark(PoseLandmark.LEFT_KNEE))
+                            Gson().toJson(pose.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE))
                         )
-                        if (pose.result.allPoseLandmarks.size > 0 && pose.result.getPoseLandmark(
-                                PoseLandmark.NOSE
-                            ).inFrameLikelihood > 0.5 &&
-                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.NOSE).position.x < image.width
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y > 0
-                            && pose.result.getPoseLandmark(PoseLandmark.NOSE).position.y < image.height &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x < image.width &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y < image.height &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x < image.width &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y > 0 &&
-                            pose.result.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y < image.height
+                        if (pose.result!!.allPoseLandmarks.size > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x < image.width
+                            && pose.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y > 0
+                            && pose.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y < image.height &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x < image.width &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y < image.height &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x < image.width &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y > 0 &&
+                            pose.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y < image.height
                         ) {
                             detected = true
                         }
@@ -346,212 +315,170 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateUI() {
+        if (imageView != null) {
+            parent_layout.removeView(imageView)
+            imageView = null
+        }
+        Log.e("CurrentUI",i.toString())
+        imageView = CustomRectangle(
+            this@MainActivity,
+            textureView.height,
+            textureView.width,
+            i
+        )
+        var set = ConstraintSet()
+        imageView!!.id = View.generateViewId()
+        parent_layout.addView(imageView)
+
+        set.clone(parent_layout)
+        set.connect(
+            imageView!!.id,
+            ConstraintSet.START,
+            textureView.id,
+            ConstraintSet.START
+        )
+        set.connect(
+            imageView!!.id,
+            ConstraintSet.TOP,
+            textureView.id,
+            ConstraintSet.TOP
+        )
+        set.connect(
+            imageView!!.id,
+            ConstraintSet.BOTTOM,
+            textureView.id,
+            ConstraintSet.BOTTOM
+        )
+        set.connect(
+            imageView!!.id,
+            ConstraintSet.END,
+            textureView.id,
+            ConstraintSet.END
+        )
+        set.applyTo(parent_layout)
+    }
+
+    fun increment(){
+        Log.e("RequestREcevie",i.toString())
+        synchronized(this){
+            i++
+        }
+    }
+
+    var i = 0
+    var imageView: CustomRectangle? = null
+
     @SuppressLint("InlinedApi")
     private fun startImages() {
-        var completed = true
-        var i = 0
+        var isDetecting=false
+        updateUI()
         thread {
-            while (true) {
-                if (completed) {
-
-                    when (i) {
+            while (i<5) {
+                if(!isDetecting){
+                    isDetecting=true
+                    var completeBitmap = textureView.bitmap
+                    var cropped = when (i) {
                         0 -> {
-                           runOnUiThread {
-                               Log.e("Codition1", "Yes")
-                               val imageView = CustomRectangle(this@MainActivity,textureView.height,textureView.width,margin/2,0,)
-                               val set = ConstraintSet()
-                               parent_layout.addView(imageView)
-                               imageView.id = View.generateViewId()
-                               set.clone(parent_layout)
-                               set.connect(
-                                   imageView.id,
-                                   ConstraintSet.START,
-                                   textureView.id,
-                                   ConstraintSet.START
-                               )
-                               set.connect(
-                                   imageView.id,
-                                   ConstraintSet.TOP,
-                                   textureView.id,
-                                   ConstraintSet.TOP
-                               )
-                               set.connect(
-                                   imageView.id,
-                                   ConstraintSet.BOTTOM,
-                                   textureView.id,
-                                   ConstraintSet.BOTTOM
-                               )
-                               set.applyTo(parent_layout)
-                           }
+                            Bitmap.createBitmap(
+                                completeBitmap!!,
+                                (textureView.width / 2),
+                                0,
+                                (textureView.width / 2),
+                                textureView.height
+                            )
                         }
                         1 -> {
-                            runOnUiThread {
-                                val imageView = ImageView(this@MainActivity)
-                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
-                                DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
-                                imageView.setImageDrawable(drawable)
-                                imageView.id = View.generateViewId()
-                                imageView.alpha = 0.5f
-                                val set = ConstraintSet()
-                                parent_layout.addView(imageView)
-                                set.clone(parent_layout)
-                                imageView.id = View.generateViewId()
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.START,
-                                    parent_layout.id,
-                                    ConstraintSet.START
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.TOP,
-                                    textureView.id,
-                                    ConstraintSet.TOP
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.BOTTOM,
-                                    textureView.id,
-                                    ConstraintSet.BOTTOM
-                                )
-                                set.applyTo(parent_layout)
-                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
-                                lp.width = textureView.width / 2
-                                lp.height = textureView.height
-                            }
+                            Bitmap.createBitmap(
+                                completeBitmap!!,
+                                (textureView.width / 2),
+                                0,
+                                (textureView.width / 2),
+                                textureView.height / 2
+                            )
                         }
                         2 -> {
-                            runOnUiThread {
-                                val imageView = ImageView(this@MainActivity)
-                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
-                                DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
-                                imageView.setImageDrawable(drawable)
-                                imageView.alpha = 0.5f
-                                imageView.id = View.generateViewId()
-                                val set = ConstraintSet()
-                                parent_layout.addView(imageView)
-                                set.clone(parent_layout)
-                                imageView.id = View.generateViewId()
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.START,
-                                    parent_layout.id,
-                                    ConstraintSet.START
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.TOP,
-                                    textureView.id,
-                                    ConstraintSet.TOP
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.BOTTOM,
-                                    textureView.id,
-                                    ConstraintSet.BOTTOM
-                                )
-                                set.applyTo(parent_layout)
-                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
-                                lp.width = textureView.width / 2
-                                lp.height = textureView.height
-                                var matrix = Matrix()
-                                imageView.scaleType = ImageView.ScaleType.MATRIX
-                                matrix.postRotate(90f)
-                                imageView.imageMatrix = matrix
-                            }
+                            Bitmap.createBitmap(
+                                completeBitmap!!,
+                                (completeBitmap.width / 2),
+                                completeBitmap.height / 2,
+                                (completeBitmap.width / 2),
+                                completeBitmap.height / 2
+                            )
                         }
                         3 -> {
-                            runOnUiThread {
-                                val imageView = ImageView(this@MainActivity)
-                                val drawable = getDrawable(R.drawable.ic_polygon_transparent)
-                                var bitmap=(drawable as VectorDrawable).toBitmap(textureView.width,textureView.height,Bitmap.Config.ARGB_8888)
-//                                var newDrawable=VectorDrawable(resources,Bitmap.createScaledBitmap(bitmap,textureView.width,textureView.height,false))
-                                //DrawableCompat.setTint(drawable!!, 0xFFFC0CB)
-                                imageView.setImageBitmap(bitmap)
-                                //imageView.scaleType=ImageView.ScaleType.FIT_XY
-                                //imageView.alpha = 0.5f
-                                imageView.id = View.generateViewId()
-                                val set = ConstraintSet()
-                                parent_layout.addView(imageView)
-                                set.clone(parent_layout)
-                                //imageView.id = View.generateViewId()
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.START,
-                                    parent_layout.id,
-                                    ConstraintSet.START
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.TOP,
-                                    textureView.id,
-                                    ConstraintSet.TOP
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.BOTTOM,
-                                    textureView.id,
-                                    ConstraintSet.BOTTOM
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.END,
-                                    textureView.id,
-                                    ConstraintSet.END
-                                )
-                                set.applyTo(parent_layout)
-                                var matrix = Matrix()
-                                var lp=imageView.layoutParams as ConstraintLayout.LayoutParams
-                                lp.height=textureView.height
-                                lp.width=textureView.width
-                                imageView.layoutParams=lp
-                                imageView.scaleType = ImageView.ScaleType.MATRIX
-                                matrix.postRotate(-90f)
-                                //imageView.imageMatrix = matrix
-
-                            }
+                            Bitmap.createBitmap(
+                                completeBitmap!!,
+                                0,
+                                0,
+                                (textureView.width / 2),
+                                textureView.height / 2
+                            )
                         }
                         4 -> {
-                            runOnUiThread {
-                                val imageView = ImageView(this@MainActivity)
-                                imageView.setImageDrawable(getDrawable(R.drawable.ic_transparent_rectangle))
-                                imageView.setBackgroundColor(0xFFFC0CB)
-                                imageView.alpha = 0.5f
-                                imageView.id = View.generateViewId()
-                                val set = ConstraintSet()
-                                parent_layout.addView(imageView)
-                                set.clone(parent_layout)
-                                imageView.id = View.generateViewId()
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.START,
-                                    parent_layout.id,
-                                    ConstraintSet.START
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.END,
-                                    textureView.id,
-                                    ConstraintSet.END
-                                )
-                                set.connect(
-                                    imageView.id,
-                                    ConstraintSet.BOTTOM,
-                                    textureView.id,
-                                    ConstraintSet.BOTTOM
-                                )
-                                set.applyTo(parent_layout)
-                                var lp = imageView.layoutParams as ConstraintLayout.LayoutParams
-                                lp.width = textureView.width
-                                lp.height = textureView.height / 2
-                            }
+                            Bitmap.createBitmap(
+                                completeBitmap!!,
+                                0,
+                                0,
+                                (textureView.width),
+                                textureView.height / 2
+                            )
                         }
 
+                        else -> {
+                            Bitmap.createBitmap(completeBitmap!!)
+                        }
                     }
+
+                    poseDetector.process(InputImage.fromBitmap(cropped, 0))
+                        .continueWith(executorService, { poses ->
+                            if (poses.result!!.allPoseLandmarks.size > 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.x <= cropped.width &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.NOSE).position.y <= cropped.height &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.x >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.x <= cropped.width &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.y >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_SHOULDER).position.y <= cropped.height &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.x >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.x <= cropped.width &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.y >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_SHOULDER).position.y <= cropped.height &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.x <= cropped.width &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.LEFT_ANKLE).position.y <= cropped.height &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.x <= cropped.width &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y >= 0 &&
+                                poses.result!!.getPoseLandmark(PoseLandmark.RIGHT_ANKLE).position.y <= cropped.height
+                            ) {
+                                //detecting.setText(poses.result.getPoseLandmark(PoseLandmark.NOSE).position.toString())
+                                runOnUiThread {
+                                    tempImageView.setImageBitmap(cropped)
+                                }
+                                runOnUiThread {
+
+                                    var animator = ValueAnimator.ofInt(100, 255)
+                                    animator.duration = 2000
+                                    animator.addUpdateListener {
+                                        imageView!!.changeAlpha(it.animatedValue as Int)
+                                    }
+                                    animator.start()
+                                    increment()
+                                }
+                                Thread.sleep(2500)
+                                runOnUiThread {
+                                    updateUI()
+                                }
+                                Thread.sleep(1000)
+                            }
+                            isDetecting=false
+                        })
                 }
-                //i++
-                completed = false
-                Thread.sleep(1000)
+
+                Thread.sleep(100)
             }
         }
     }
@@ -577,67 +504,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
-
-
-    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    @Throws(CameraAccessException::class)
-    private fun getRotationCompensation(
-        cameraId: String,
-        activity: Activity,
-        isFrontFacing: Boolean
-    ): Int {
-        // Get the device's current rotation relative to its "native" orientation.
-        // Then, from the ORIENTATIONS table, look up the angle the image must be
-        // rotated to compensate for the device's rotation.
-        val deviceRotation = activity.windowManager.defaultDisplay.rotation
-        var rotationCompensation = ORIENTATIONS.get(deviceRotation)
-
-        // Get the device's sensor orientation.
-        val cameraManager = activity.getSystemService(CAMERA_SERVICE) as CameraManager
-        val sensorOrientation = cameraManager
-            .getCameraCharacteristics(cameraId)
-            .get(CameraCharacteristics.SENSOR_ORIENTATION)!!
-
-        if (isFrontFacing) {
-            rotationCompensation = (sensorOrientation + rotationCompensation) % 360
-        } else { // back-facing
-            rotationCompensation = (sensorOrientation - rotationCompensation + 360) % 360
-        }
-        return rotationCompensation
-    }
-
-    fun getRectangleShape(scaleBitmapImage: Bitmap?, margin: Margins, height: Int): Bitmap? {
-        val targetWidth = scaleBitmapImage!!.width
-        val targetHeight = scaleBitmapImage!!.height
-        val targetBitmap = Bitmap.createBitmap(
-            targetWidth,
-            targetHeight, Bitmap.Config.ARGB_8888
-        )
-        var canvas = Canvas(targetBitmap)
-        val path = Path()
-
-        path.addRect(
-            0f,
-            0f,
-            (textureView.width / 2).toFloat(),
-            0f,
-            Path.Direction.CCW
-        )
-        canvas.clipPath(path)
-        canvas.drawBitmap(
-            scaleBitmapImage,
-            Rect(
-                0, 0, scaleBitmapImage.width,
-                scaleBitmapImage.height
-            ),
-            Rect(
-                0, 0, targetWidth,
-                targetHeight
-            ), null
-        )
-        return targetBitmap
-    }
-
 
     override fun onResume() {
         super.onResume()

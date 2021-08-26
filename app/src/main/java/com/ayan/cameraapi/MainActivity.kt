@@ -241,8 +241,8 @@ class MainActivity : AppCompatActivity() {
             null,
             mBackgroundHandler
         )
-        //detectPerson()
-        startImages()
+        detectPerson()
+        //startImages()
     }
 
     private fun detectPerson() {
@@ -380,7 +380,9 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("InlinedApi")
     private fun startImages() {
         var isDetecting=false
-        updateUI()
+        runOnUiThread {
+            updateUI()
+        }
         thread {
 
             while (i<5) {
@@ -478,7 +480,6 @@ class MainActivity : AppCompatActivity() {
                             ) {
                                 //detecting.setText(poses.result.getPoseLandmark(PoseLandmark.NOSE).position.toString())
                                 runOnUiThread {
-
                                     var animator = ValueAnimator.ofInt(100, 255)
                                     animator.duration = 2000
                                     animator.addUpdateListener {

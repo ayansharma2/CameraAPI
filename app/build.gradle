@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId "com.ayan.cameraapi"
         minSdk 24
-        targetSdk 30
+        targetSdk 28
         versionCode 1
         versionName "1.0"
 

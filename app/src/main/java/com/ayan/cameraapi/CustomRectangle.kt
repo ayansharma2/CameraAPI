@@ -47,7 +47,7 @@ class CustomRectangle : View {
         }
     }
     fun tempAlpha(){
-        mPaint.alpha=mPaint.alpha+5
+        mPaint.alpha=mPaint.alpha+4
         postInvalidate()
     }
     fun changeColor(newColor:Int){

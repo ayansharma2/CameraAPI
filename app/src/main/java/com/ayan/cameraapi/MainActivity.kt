@@ -1,12 +1,10 @@
 package com.ayan.cameraapi
 
-import android.Manifest
 import android.animation.*
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.hardware.camera2.*
 import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
@@ -14,8 +12,6 @@ import android.util.Size
 import android.util.SparseIntArray
 import android.view.Surface
 import android.view.TextureView
-import androidx.annotation.RequiresApi
-import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.common.InputImage
 import java.io.File
 
@@ -23,7 +19,6 @@ import android.content.res.Resources
 import android.graphics.*
 import android.graphics.drawable.*
 import android.os.*
-import android.util.DisplayMetrics
 import android.view.View
 import android.widget.*
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -35,13 +30,16 @@ import com.google.mlkit.vision.pose.accurate.AccuratePoseDetectorOptions
 import kotlinx.coroutines.*
 import java.util.*
 import kotlin.concurrent.thread
-import android.graphics.drawable.Drawable
-
-import androidx.appcompat.content.res.AppCompatResources
-import androidx.core.animation.addListener
-import androidx.core.graphics.get
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.MediaRecorder
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.net.Uri
+import androidx.core.app.ShareCompat
+import androidx.core.content.FileProvider
 import com.google.mlkit.vision.pose.*
-import java.util.concurrent.Executor
+import java.io.IOException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -49,32 +47,27 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
 
     val textureView: AutoFitTextureView by lazy {
-        findViewById<AutoFitTextureView>(R.id.texture_view)
+        findViewById(R.id.texture_view)
     }
 
     companion object {
         const val CAMERA_REQUEST = 2
+        const val REQUEST_MEDIA_PROJECTION=3
     }
 
-    private lateinit var previewSurface: Surface
     lateinit var cameraId: String
     lateinit var cameraDevice: CameraDevice
     lateinit var captureCameraSession: CameraCaptureSession
-    lateinit var captureRequest: CaptureRequest
     lateinit var captureRequestBuilder: CaptureRequest.Builder
-    lateinit var leftEye: TextView
-    lateinit var rightEye: TextView
     lateinit var parent_layout: ConstraintLayout
     private lateinit var imageDimensions: Size
 
-    //    lateinit var imageReader: ImageReader
     lateinit var file: File
     var mBackgroundHandler: Handler? = null
     var mBackgroundThread: HandlerThread? = null
     lateinit var options: AccuratePoseDetectorOptions
     private lateinit var button: Button
     private val ORIENTATIONS = SparseIntArray()
-    lateinit var eye: TextView
     lateinit var fab: FloatingActionButton
     lateinit var canvas: Canvas
     lateinit var tempImageView: ImageView
@@ -93,11 +86,22 @@ class MainActivity : AppCompatActivity() {
     lateinit var timerLayout: LinearLayout
     lateinit var timer: TextView
     lateinit var detecting: TextView
-
+    private var mMediaRecorder: MediaRecorder?=null
+    private var mMediaProjection: MediaProjection? = null
+    private var mVirtualDisplay: VirtualDisplay? = null
+    private var mMediaProjectionManager: MediaProjectionManager? = null
     private lateinit var poseDetector: PoseDetector
+    var isRecordingStarted=false
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        mMediaRecorder = MediaRecorder()
+        mMediaProjectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        initRecorder()
+        startActivityForResult(
+            mMediaProjectionManager!!.createScreenCaptureIntent(),
+            REQUEST_MEDIA_PROJECTION
+        )
         tempImageView=findViewById(R.id.image_view)
         options = AccuratePoseDetectorOptions.Builder()
             .setDetectorMode(AccuratePoseDetectorOptions.STREAM_MODE)
@@ -122,8 +126,60 @@ class MainActivity : AppCompatActivity() {
 
     }
 
-    var Viewheight = 0
-    var Viewwidth = 0
+
+    var path: String? = null
+    var uri: Uri? = null
+    private fun initRecorder() {
+
+        path = "${getExternalFilesDir("Media")}/${System.currentTimeMillis()}.mp4"
+        try {
+            mMediaRecorder!!.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+            mMediaRecorder!!.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            mMediaRecorder!!.setOutputFile(
+                path
+            )
+            mMediaRecorder!!.setVideoSize(
+                resources.displayMetrics.widthPixels,
+                resources.displayMetrics.heightPixels
+            )
+            mMediaRecorder!!.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+
+            mMediaRecorder!!.setVideoEncodingBitRate(8000000)
+            mMediaRecorder!!.setVideoFrameRate(30)
+            val rotation = windowManager.defaultDisplay.rotation
+            val orientation = ORIENTATIONS[rotation + 90]
+            mMediaRecorder!!.setOrientationHint(orientation)
+            mMediaRecorder!!.prepare()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+
+
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+
+        if (requestCode == REQUEST_MEDIA_PROJECTION) {
+            if (resultCode == Activity.RESULT_OK) {
+                mMediaProjection = mMediaProjectionManager!!.getMediaProjection(
+                    resultCode,
+                    data!!
+                )
+                mVirtualDisplay = mMediaProjection!!.createVirtualDisplay(
+                    "Display 1",
+                    resources.displayMetrics.widthPixels,
+                    resources.displayMetrics.heightPixels,
+                    resources.displayMetrics.densityDpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    mMediaRecorder!!.surface,
+                    null,
+                    null
+                )
+            }
+            detectPerson()
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
     private fun takePicture() {
         TODO("Not yet implemented")
     }
@@ -145,7 +201,7 @@ class MainActivity : AppCompatActivity() {
 
         }
 
-    };
+    }
     lateinit var manager: CameraManager
 
     @SuppressLint("MissingPermission")
@@ -155,17 +211,6 @@ class MainActivity : AppCompatActivity() {
         val characteristics = manager.getCameraCharacteristics(cameraId)
         val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         imageDimensions = map!!.getOutputSizes(SurfaceTexture::class.java)[0]
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.CAMERA
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestPermissions(
-                arrayOf(Manifest.permission.CAMERA),
-                CAMERA_REQUEST
-            )
-            return
-        }
         manager.openCamera(cameraId, stateCallback, mBackgroundHandler)
     }
 
@@ -192,7 +237,6 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("NewApi")
     private fun createCameraPreview() {
         val texture = textureView.surfaceTexture
-        val displayMetrics = DisplayMetrics()
 
         texture!!.setDefaultBufferSize(imageDimensions.width, imageDimensions.height)
         runOnUiThread {
@@ -241,7 +285,7 @@ class MainActivity : AppCompatActivity() {
             null,
             mBackgroundHandler
         )
-        detectPerson()
+        //detectPerson()
         //startImages()
     }
 
@@ -254,7 +298,7 @@ class MainActivity : AppCompatActivity() {
                 val image = InputImage.fromBitmap(textureView.bitmap!!, 0)
                 //Log.e("ImageWidth",image.width.toString())
                 poseDetector.process(image)
-                    .addOnCompleteListener { pose ->
+                    .continueWith(executorService,{ pose ->
                         Log.e(
                             "POSE",
                             Gson().toJson(pose.result!!.getPoseLandmark(PoseLandmark.LEFT_KNEE))
@@ -275,11 +319,13 @@ class MainActivity : AppCompatActivity() {
                         ) {
                             detected = true
                         }
-                    }
+                    })
                 if (detected)
                     break
             }
             runOnUiThread {
+               mMediaRecorder!!.start()
+                isRecordingStarted=true
                 detecting.apply {
                     animate()
                         .alpha(0f)
@@ -385,7 +431,7 @@ class MainActivity : AppCompatActivity() {
         }
         thread {
 
-            while (i<5) {
+            while (i<1) {
                 //Log.e("Time",time.toString())
                 runOnUiThread {
                     //Log.e("TempAlpha",(100+(155*(time/3000)).toInt()).toString())
@@ -501,33 +547,34 @@ class MainActivity : AppCompatActivity() {
                 incrementTime(100)
                 Thread.sleep(100)
             }
-        }
-    }
+            runOnUiThread {
 
-    @SuppressLint("MissingPermission")
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        when (requestCode) {
-            CAMERA_REQUEST -> {
-                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(this, "Permission Granted", Toast.LENGTH_LONG).show()
-                    manager.openCamera(cameraId, stateCallback, mBackgroundHandler)
-                    //startCamera()
-                } else {
-                    Toast.makeText(this@MainActivity, "Permission Not granted", Toast.LENGTH_LONG)
-                        .show()
-                }
+                mMediaRecorder!!.stop()
+                mMediaRecorder=null
+                isRecordingStarted=false
+                uri = FileProvider.getUriForFile(
+                    this,
+                    BuildConfig.APPLICATION_ID + ".provider",
+                    File(path)
+                )
+                val intent = ShareCompat.IntentBuilder.from(this)
+                    .setType("video/mp4")
+                    .setStream(uri)
+                    .setChooserTitle("Choose bar")
+                    .createChooserIntent()
+                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                //videoView.setVideoURI(uri)
+                startActivity(intent)
             }
         }
     }
 
+
     override fun onResume() {
         super.onResume()
+        if(isRecordingStarted){
+            mMediaRecorder!!.resume()
+        }
         startBackGroundThread()
         if (textureView.isAvailable) {
             openCamera()
@@ -544,6 +591,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onPause() {
         stopBackGroundThread()
+        if(isRecordingStarted){
+            mMediaRecorder!!.pause()
+        }
         super.onPause()
 
     }
